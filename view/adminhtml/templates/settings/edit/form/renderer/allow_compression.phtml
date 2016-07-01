@@ -1,0 +1,29 @@
+<?php
+/**
+ *    This file is part of Bridge Connector.
+ *
+ *   Bridge Connector is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   Bridge Connector is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with Bridge Connector.  If not, see <http://www.gnu.org/licenses/>.
+ */
+?>
+<div class="admin__field field field-allow_compression with-note" data-ui-id="bridgeconnector-settings-edit-tab-main-fieldset-element-form-field-allow-compression">
+    <label class="label admin__field-label" for="settings_allow_compression" data-ui-id="bridgeconnector-settings-edit-tab-main-fieldset-element-text-allow-compression-label"><span>Allow Compression</span></label>
+    <div class="admin__field-control control">
+        <div class="switcher" onselectstart="return false;">
+            <?php $storedSettings = \Emagicone\Bridgeconnector\Helper\Tools::getStoredSettings(); ?>
+            <input type="checkbox" id="allow_compression_switcher" name="allow_compression" value="1" <?php echo $storedSettings['allow_compression'] == 1 ? 'checked' : ''; ?>>
+            <label class="switcher-label" for="allow_compression_switcher" data-text-on="Compression allowed" data-text-off="Compression forbidden"></label>
+        </div>
+        <div class="note" id="exclude_db_tables-note">Compression of generated dump file. It is recommended for save space and faster getting data in Store Manager</div>
+    </div>
+</div>

@@ -1,0 +1,26 @@
+{
+    "name": "emagicone/module-bridgeconnector",
+    "description": "Install Bridge Connector module to fluently connect Store Manager desktop application to Magento database. Increase speed of data management, take advantage of simplicity and reliability with all-in-one Store Manager via Bridge Connector.",
+    "type": "magento2-module",
+    "version": "1.0.0",
+    "license": [
+        "OSL-3.0",
+        "AFL-3.0"
+    ],
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "Emagicone\\Bridgeconnector\\": ""
+        }
+    },
+    "extra": {
+        "map": [
+            [
+                "*",
+                "Emagicone/Bridgeconnector"
+            ]
+        ]
+    }
+}
