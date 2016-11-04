@@ -1,19 +1,19 @@
 <?php
 /**
- *    This file is part of Bridge Connector.
+ *    This file is part of Magento Store Manager Connector.
  *
- *   Bridge Connector is free software: you can redistribute it and/or modify
+ *   Magento Store Manager Connector is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   Bridge Connector is distributed in the hope that it will be useful,
+ *   Magento Store Manager Connector is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with Bridge Connector.  If not, see <http://www.gnu.org/licenses/>.
+ *   along with Magento Store Manager Connector.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace Emagicone\Bridgeconnector\Setup;
@@ -24,9 +24,12 @@ use Magento\Framework\Setup\SchemaSetupInterface;
 use Magento\Framework\DB\Ddl\Table;
 use Emagicone\Bridgeconnector\Helper;
 
+/**
+ * Class InstallSchema
+ * @package Emagicone\Bridgeconnector\Setup
+ */
 class InstallSchema implements InstallSchemaInterface
 {
-
     /**
      * Installs DB schema for a module
      *
@@ -36,6 +39,7 @@ class InstallSchema implements InstallSchemaInterface
      */
     public function install(SchemaSetupInterface $setup, ModuleContextInterface $context)
     {
+        $context->getVersion();
         $installer = $setup;
         $installer->startSetup();
 
@@ -48,33 +52,51 @@ class InstallSchema implements InstallSchemaInterface
 
     private function createTableSessionKeys($installer)
     {
+        $tableName = $installer->getTable(Helper\Constants::TABLE_SESSION_KEYS);
+
         $table = $installer->getConnection()
-            ->newTable($installer->getTable(Helper\Constants::TABLE_SESSION_KEYS))
+            ->newTable($tableName)
             ->addColumn(
                 'id',
                 Table::TYPE_INTEGER,
                 null,
-                ['identity' => true, 'nullable' => false, 'primary' => true, 'unsigned' => true, 'auto_increment' => true]
+                [
+                    'identity'       => true,
+                    'nullable'       => false,
+                    'primary'        => true,
+                    'unsigned'       => true,
+                    'auto_increment' => true
+                ]
             )
             ->addColumn('session_key', Table::TYPE_TEXT, 100, ['nullable' => false])
             ->addColumn('date_added', Table::TYPE_DATETIME, null, ['nullable' => false])
-            ->addColumn('last_activity', Table::TYPE_DATETIME, null, ['nullable' => false]);
+            ->addColumn('last_activity', Table::TYPE_DATETIME, null, ['nullable' => false])
+            ->addIndex($installer->getIdxName($tableName, ['session_key']), ['session_key']);
 
         $installer->getConnection()->createTable($table);
     }
 
     private function createTableFailedLogin($installer)
     {
+        $tableName = $installer->getTable(Helper\Constants::TABLE_FAILED_LOGIN);
+
         $table = $installer->getConnection()
-            ->newTable($installer->getTable(Helper\Constants::TABLE_FAILED_LOGIN))
+            ->newTable($tableName)
             ->addColumn(
                 'id',
                 Table::TYPE_INTEGER,
                 null,
-                ['identity' => true, 'nullable' => false, 'primary' => true, 'unsigned' => true, 'auto_increment' => true]
+                [
+                    'identity'       => true,
+                    'nullable'       => false,
+                    'primary'        => true,
+                    'unsigned'       => true,
+                    'auto_increment' => true
+                ]
             )
             ->addColumn('ip', Table::TYPE_TEXT, 20, ['nullable' => false])
-            ->addColumn('date_added', Table::TYPE_DATETIME, null, ['nullable' => false]);
+            ->addColumn('date_added', Table::TYPE_DATETIME, null, ['nullable' => false])
+            ->addIndex($installer->getIdxName($tableName, ['ip']), ['ip']);
 
         $installer->getConnection()->createTable($table);
     }
@@ -120,5 +142,4 @@ class InstallSchema implements InstallSchemaInterface
 
         return $tables;
     }
-
 }

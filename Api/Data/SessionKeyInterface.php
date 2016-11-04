@@ -16,23 +16,29 @@
  *   along with Magento Store Manager Connector.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace Emagicone\Bridgeconnector\Block\Adminhtml\Settings\Edit;
+namespace Emagicone\Bridgeconnector\Api\Data;
 
 /**
- * Admin page left menu
+ * Interface SessionKeyInterface
+ * @package Emagicone\Bridgeconnector\Api\Data
  */
-class Tabs extends \Magento\Backend\Block\Widget\Tabs
+interface SessionKeyInterface
 {
     /**
-     * Constructor
-     *
-     * @return void
+     * Constants for keys of data array. Identical to the name of the getter in snake case
      */
-    public function _construct()
-    {
-        parent::_construct();
-        $this->setId('bridgeconnector_settings_edit_tabs');
-        $this->setDestElementId('edit_form');
-        $this->setTitle(__('Settings'));
-    }
+    const ID            = 'id';
+    const SESSION_KEY   = 'session_key';
+    const DATE_ADDED    = 'date_added';
+    const LAST_ACTIVITY = 'last_activity';
+
+    public function getId();
+    public function getSessionKey();
+    public function getDateAdded();
+    public function getLastActivity();
+
+    public function setId($id);
+    public function setSessionKey($sessionKey);
+    public function setDateAdded($dateAdded);
+    public function setLastActivity($lastActivity);
 }

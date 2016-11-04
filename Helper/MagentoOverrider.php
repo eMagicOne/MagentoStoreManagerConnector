@@ -1,47 +1,96 @@
 <?php
 /**
- *    This file is part of Bridge Connector.
+ *    This file is part of Magento Store Manager Connector.
  *
- *   Bridge Connector is free software: you can redistribute it and/or modify
+ *   Magento Store Manager Connector is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   Bridge Connector is distributed in the hope that it will be useful,
+ *   Magento Store Manager Connector is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with Bridge Connector.  If not, see <http://www.gnu.org/licenses/>.
+ *   along with Magento Store Manager Connector.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace Emagicone\Bridgeconnector\Helper;
 
-use Emagicone\Bridgeconnector\Helper\BridgeConnectorCore;
 use Magento\Framework\Config\ConfigOptionsListConstants;
+use Magento\Framework\Data\Collection;
+use Magento\Framework\ObjectManager\ObjectManager;
 
+/**
+ * Class MagentoOverrider
+ * @package Emagicone\Bridgeconnector\Helper
+ */
 class MagentoOverrider extends BridgeConnectorCore
 {
+    private $request;
 
-    public function __construct($module_name, $options_name)
-    {
-        $this->module_name  = $module_name;
-        $this->options_name = $options_name;
+    /**
+     * @var ObjectManager
+     */
+    private $objectManager;
+
+    /**
+     * MagentoOverrider constructor.
+     * @param $module_name
+     * @param $options_name
+     * @param $request
+     * @param $object_manager
+     */
+    public function __construct(
+        $module_name,
+        $options_name,
+        $request,
+        ObjectManager $object_manager
+    ) {
+        $this->module_name   = $module_name;
+        $this->options_name  = $options_name;
+        $this->request       = $request;
+        $this->objectManager = $object_manager;
     }
 
     private function getImagePath($entity_type, $image_id)
     {
         /** @var \Magento\Framework\Filesystem\Directory\Read $mediaDirectory */
-        $mediaDirectory = Tools::getObjectManager()->get('Magento\Framework\Filesystem')
+        $mediaDirectory = $this->objectManager->get('Magento\Framework\Filesystem')
             ->getDirectoryWrite(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
 
         return $mediaDirectory->getAbsolutePath($this->getImageDir($entity_type)) . $image_id;
     }
 
+    private function getRequest()
+    {
+        return $this->request;
+    }
+
+    public function getUploadedFileInfo($filename)
+    {
+        $uploaded_file_info = false;
+
+        try {
+            $uploaded_file = $this->objectManager->create(
+                'Magento\MediaStorage\Model\File\Uploader',
+                ['fileId' => $filename]
+            );
+
+            $uploaded_file_info = $uploaded_file->validateFile();
+        } catch (\Exception $e) {
+            $error = $e->getPrevious();
+            $this->error_no = $error->errorInfo[1];
+            $this->error_msg = $error->errorInfo[2];
+        }
+
+        return $uploaded_file_info;
+    }
+
     public function isModuleEnabled()
     {
-        return Tools::getObjectManager()->get('Magento\Framework\Module\Manager')->isOutputEnabled($this->module_name);
+        return $this->objectManager->get('Magento\Framework\Module\Manager')->isOutputEnabled($this->module_name);
     }
 
     public function getBridgeOptions()
@@ -49,9 +98,7 @@ class MagentoOverrider extends BridgeConnectorCore
         $options = Tools::getConfigValue($this->options_name);
 
         if ($options) {
-            $options = unserialize($options);
-
-            return $options;
+            return $this->unserialize($options);
         }
 
         return false;
@@ -97,10 +144,17 @@ class MagentoOverrider extends BridgeConnectorCore
 
     public function getSqlResults($sql, $type = self::ASSOC)
     {
-        $ret = array();
+        $ret = [];
 
         try {
-            $result = Tools::getResource()->getConnection()->fetchAll($sql);
+            $result = [];
+            $query  = Tools::getResource()->getConnection()->query($sql);
+
+            if ($query) {
+                while ($row = $query->fetch()) {
+                    $result[] = $row;
+                }
+            }
 
             if ($type == self::ASSOC) {
                 return $result;
@@ -109,7 +163,6 @@ class MagentoOverrider extends BridgeConnectorCore
             foreach ($result as $arr_values) {
                 $ret[] = array_values($arr_values);
             }
-
         } catch (\Exception $e) {
             $error = $e->getPrevious();
             $this->error_no = $error->errorInfo[1];
@@ -124,16 +177,8 @@ class MagentoOverrider extends BridgeConnectorCore
     public function execSql($sql, $reconnect = false)
     {
         $result = true;
-//        $db = Db::getInstance();
-
-        if ($reconnect) {
-//            $db->connect();
-        }
 
         try {
-            /*if (!$db->execute($sql)) {
-                throw new Exception('Error');
-            }*/
             Tools::getResource()->getConnection()->rawQuery($sql);
         } catch (\Exception $e) {
             $this->error_no = $e->errorInfo[1];
@@ -152,45 +197,42 @@ class MagentoOverrider extends BridgeConnectorCore
 
     public function issetRequestParam($param)
     {
-        $result = false;
-
-        if (!is_null(Tools::getObjectManager()->get('\Magento\Framework\App\Action\Action')->getRequest()->getParam($param))) {
-            $result = true;
-        }
-
-        return $result;
+        return null !== $this->getRequest()->getParam($param);
     }
 
     public function getRequestParam($param)
     {
-        return Tools::getObjectManager()->get('\Magento\Framework\App\Action\Action')->getRequest()->getParam($param);
+        return $this->getRequest()->getParam($param);
+    }
+
+    public function getRequestData()
+    {
+        return $this->getRequest()->getParams();
     }
 
     public function getStoreLink($ssl = false)
     {
-        /*if ($ssl) {
-            return _PS_BASE_URL_SSL_.__PS_BASE_URI__;
-        }
-
-        return _PS_BASE_URL_.__PS_BASE_URI__;*/
         return false;
     }
 
     public function runIndexer()
     {
-        $indexers = Tools::getObjectManager()->get('Magento\Indexer\Model\Indexer\Collection')->getItems();
+        $indexers = $this->objectManager->get('Magento\Indexer\Model\Indexer\Collection')->getItems();
+        $result = '';
 
         foreach ($indexers as $indexer) {
             $indexer->reindexAll();
-            echo $indexer->getTitle()->getText() . ' index was rebuilt successfully<br>';
+            $result .= $indexer->getTitle()->getText() . ' index was rebuilt successfully<br>';
         }
+
+        return $result;
     }
 
     public function getCartVersion()
     {
         return Tools::jsonEncode(
             [
-                'cart_version' => Tools::getObjectManager()->get('Magento\Framework\App\ProductMetadataInterface')
+                'cart_version' => $this->objectManager->get('Magento\Framework\App\ProductMetadataInterface')
                     ->getVersion(),
                 'crypt_key' => Tools::getDeploymentConfig()->get(ConfigOptionsListConstants::CONFIG_PATH_CRYPT_KEY)
             ]
@@ -204,78 +246,59 @@ class MagentoOverrider extends BridgeConnectorCore
 
     public function setImage($entity_type, $image_id, $img, $type)
     {
-        $result = false;
+        $result   = false;
         $img_file = $this->getImage($entity_type, $image_id);
-        $dirpath = dirname($img_file);
+        $dirpath  = $this->getParentDirectory($img_file);
 
-        if (!file_exists($dirpath)) {
-            mkdir($dirpath, 0777, true);
+        if (!$this->fileExists($dirpath)) {
+            $this->createDirectory($dirpath, 0777);
         }
 
-        if (file_exists($dirpath)) {
+        if ($this->fileExists($dirpath)) {
             if ($type == self::IMAGE_URL) {
-                $result = file_put_contents($img_file, $this->fileGetContents($img));
+                $result = $this->filePutContents($img_file, $this->fileGetContents($img));
             } else {
-                $result = move_uploaded_file($_FILES[$img]['tmp_name'], $img_file);
-
-    //            try {
-    //                $uploader = Tools::getObjectManager()->create(
-    //                    'Magento\MediaStorage\Model\File\Uploader',
-    //                    ['fileId' => $img]
-    //                );
-    //                $uploader->setAllowedExtensions(['jpg', 'jpeg', 'gif', 'png']);
-
-    //                /** @var \Magento\Framework\Image\Adapter\AdapterInterface $imageAdapter */
-    //                $imageAdapter = Tools::getObjectManager()->get('Magento\Framework\Image\AdapterFactory')->create();
-    //                $uploader->addValidateCallback('catalog_product_image', $imageAdapter, 'validateUploadFile');
-    //                $uploader->setAllowRenameFiles(true);
-    //                $uploader->setFilesDispersion(true);
-
-    //                /** @var \Magento\Framework\Filesystem\Directory\Read $mediaDirectory */
-    //                $mediaDirectory = Tools::getObjectManager()->get('Magento\Framework\Filesystem')
-    //                    ->getDirectoryWrite(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
-
-    //                $result = $uploader->save($mediaDirectory->getAbsolutePath($this->getImageDir($entity_type)));
-    //            } catch (\Exception $e) {
-    //                die($this->jsonEncode(array(
-    //                    self::CODE_RESPONSE => self::ERROR_CODE_COMMON,
-    //                    self::KEY_MESSAGE   => 'File was not uploaded. '.$e->getMessage(),
-    //                )));
-    //            }
+                $result = $this->moveUploadedFile($img, $dirpath);
             }
         }
 
         if ($result) {
-            die($this->jsonEncode(array(
+            $response = $this->jsonEncode([
                 self::CODE_RESPONSE => self::SUCCESSFUL,
                 self::KEY_MESSAGE   => 'File was successfully uploaded',
-            )));
+            ]);
         } else {
-            die($this->jsonEncode(array(
+            $response = $this->jsonEncode([
                 self::CODE_RESPONSE => self::ERROR_CODE_COMMON,
                 self::KEY_MESSAGE   => 'File was not uploaded',
-            )));
+            ]);
         }
+
+        return $response;
     }
 
     public function deleteImage($entity_type, $image_id)
     {
-        $this->deleteFile($this->getImagePath($entity_type, $image_id));
+        return $this->deleteFile($this->getImagePath($entity_type, $image_id));
     }
 
     public function deleteFile($filepath)
     {
-        if (file_exists($filepath) && unlink($filepath)) {
-            die($this->jsonEncode(array(
+        if ($this->fileExists($filepath) && $this->unlink($filepath)) {
+            $result = $this->jsonEncode([
                 self::CODE_RESPONSE => self::SUCCESSFUL,
                 self::KEY_MESSAGE   => 'File was deleted from server successfully',
-            )));
+            ]);
+        } else {
+            $result = $this->jsonEncode(
+                [
+                    self::CODE_RESPONSE => self::ERROR_CODE_COMMON,
+                    self::KEY_MESSAGE   => 'File was not deleted from server',
+                ]
+            );
         }
 
-        die($this->jsonEncode(array(
-            self::CODE_RESPONSE => self::ERROR_CODE_COMMON,
-            self::KEY_MESSAGE   => 'File was not deleted from server',
-        )));
+        return $result;
     }
 
     public function copyImage($entity_type, $from_image_id, $to_image_id)
@@ -290,25 +313,26 @@ class MagentoOverrider extends BridgeConnectorCore
 
     public function setFile($folder, $filename, $file)
     {
-        $destination_directory = $this->getShopRootDir() . "/$folder";
-        $result = mkdir($destination_directory, 0777, true);
+        $destinationPath = $this->getShopRootDir() . "/$folder";
+        $result          = $this->createDirectory($destinationPath, 0777);
 
         if ($result) {
-            $destination_path = "$destination_directory/$filename";
-            $result = move_uploaded_file($_FILES[$file]['tmp_name'], $destination_path);
+            $result = $this->moveUploadedFile($file, $destinationPath);
         }
 
         if ($result) {
-            die($this->jsonEncode(array(
+            $response = $this->jsonEncode([
                 self::CODE_RESPONSE => self::SUCCESSFUL,
                 self::KEY_MESSAGE   => 'File was successfully uploaded',
-            )));
+            ]);
         } else {
-            die($this->jsonEncode(array(
+            $response = $this->jsonEncode([
                 self::CODE_RESPONSE => self::ERROR_CODE_COMMON,
                 self::KEY_MESSAGE   => 'File was not uploaded',
-            )));
+            ]);
         }
+
+        return $response;
     }
 
     public function getImageDir($type)
@@ -318,7 +342,7 @@ class MagentoOverrider extends BridgeConnectorCore
         switch ($type) {
             case self::PRODUCT:
                 /** @var \Magento\Catalog\Model\Product\Media\Config $config */
-                $config = Tools::getObjectManager()->get('Magento\Catalog\Model\Product\Media\Config');
+                $config = $this->objectManager->get('Magento\Catalog\Model\Product\Media\Config');
                 $path = $config->getBaseMediaPath();
                 break;
             case self::CATEGORY:
@@ -326,7 +350,7 @@ class MagentoOverrider extends BridgeConnectorCore
                 break;
             case self::ATTRIBUTE:
                 /** @var \Magento\Swatches\Helper\Media $swatches_media */
-                $swatches_media = Tools::getObjectManager()->get('Magento\Swatches\Helper\Media');
+                $swatches_media = $this->objectManager->get('Magento\Swatches\Helper\Media');
                 $path = $swatches_media::SWATCH_MEDIA_PATH;
                 break;
         }
@@ -334,48 +358,348 @@ class MagentoOverrider extends BridgeConnectorCore
         return $path;
     }
 
-    public function checkDataChanges($tables_arr = [])
+    public function strLen($str)
+    {
+        return strlen($str);
+    }
+
+    public function subStr($str, $start, $length = false)
+    {
+        if ($length) {
+            return substr($str, $start, $length);
+        }
+
+        return substr($str, $start);
+    }
+
+    public function strToLower($str)
+    {
+        return strtolower($str);
+    }
+
+    public function strToUpper($str)
+    {
+        return strtoupper($str);
+    }
+
+    public function jsonEncode($arr)
+    {
+        return Tools::jsonEncode($arr);
+    }
+
+    public function stripSlashes($str)
+    {
+        return stripslashes($str);
+    }
+
+    public function fileGetContents($file)
+    {
+        return Tools::getFile()->fileGetContents($file);
+    }
+
+    public function filePutContents($path, $content, $mode = null)
+    {
+        return Tools::getFile()->filePutContents($path, $content, $mode);
+    }
+
+    public function pSQL($data)
+    {
+        return $data;
+    }
+
+    public function saveConfigData($data)
+    {
+        Tools::saveConfigValue($this->options_name, serialize($data));
+    }
+
+    public function fileOpen($path, $mode)
+    {
+        return Tools::getFile()->fileOpen($path, $mode);
+    }
+
+    public function fileClose($resource)
+    {
+        return Tools::getFile()->fileClose($resource);
+    }
+
+    public function isReadable($path)
+    {
+        return Tools::getFile()->isReadable($path);
+    }
+
+    public function isWritable($path)
+    {
+        return Tools::getFile()->isWritable($path);
+    }
+
+    public function isDirectory($path)
+    {
+        return Tools::getFile()->isDirectory($path);
+    }
+
+    public function isFile($path)
+    {
+        return Tools::getFile()->isFile($path);
+    }
+
+    public function stat($path)
+    {
+        return Tools::getFile()->stat($path);
+    }
+
+    public function filemtime($path)
+    {
+        $data = $this->stat($path);
+
+        if (!$data || !isset($data['size'])) {
+            return false;
+        }
+
+        return $data['mtime'];
+    }
+
+    public function fileSize($path)
+    {
+        $data = $this->stat($path);
+
+        if (!$data || !isset($data['size'])) {
+            return false;
+        }
+
+        return $data['size'];
+    }
+
+    public function fileExists($path)
+    {
+        return Tools::getFile()->isExists($path);
+    }
+
+    public function fileWrite($resource, $data)
+    {
+        return Tools::getFile()->fileWrite($resource, $data);
+    }
+
+    public function fileRead($resource, $length)
+    {
+        return Tools::getFile()->fileRead($resource, $length);
+    }
+
+    public function gzFileOpen($path, $mode)
+    {
+        $file = $this->objectManager->create('Emagicone\Bridgeconnector\Helper\GzFile', ['filePath' => $path]);
+        $file->gzOpen($mode);
+
+        return $file;
+    }
+
+    public function gzFileWrite($resource, $data)
+    {
+        $resource->gzWrite($data);
+    }
+
+    public function gzFileClose($resource)
+    {
+        $resource->gzClose();
+    }
+
+    public function unlink($path)
+    {
+        return Tools::getFile()->deleteFile($path);
+    }
+
+    public function moveUploadedFile($filename, $destinationFolder, $newFileName = null)
+    {
+        return Tools::getUploader($filename)->save($destinationFolder, $newFileName);
+    }
+
+    public function search($path, $pattern = '*', $onlyDir = false)
+    {
+        $data = Tools::getFile()->search($pattern, $path);
+
+        if ($onlyDir) {
+            $dirs = [];
+
+            foreach ($data as $item) {
+                if ($this->isDirectory($item)) {
+                    $dirs[] = $item;
+                }
+            }
+
+            return $dirs;
+        }
+
+        return $data;
+    }
+
+    public function readDirectory($path)
+    {
+        return Tools::getFile()->readDirectory($path);
+    }
+
+    public function createDirectory($path, $permissions)
+    {
+        return Tools::getFile()->createDirectory($path, $permissions);
+    }
+
+    public function getParentDirectory($path)
+    {
+        return Tools::getFile()->getParentDirectory($path);
+    }
+
+    public function unserialize($data)
+    {
+        return Tools::unserialize($data);
+    }
+
+    public function getRemoteAddress($ipToLong = false)
+    {
+        return $this->objectManager->get('Magento\Framework\HTTP\PhpEnvironment\RemoteAddress')
+            ->getRemoteAddress($ipToLong);
+    }
+
+    public function escapeQuote($data, $addSlashes = false)
+    {
+        return Tools::getEscaper()->escapeQuote($data, $addSlashes);
+    }
+
+    public function base64Encode($data)
+    {
+        return Tools::base64Encode($data);
+    }
+
+    public function base64Decode($data)
+    {
+        return Tools::base64Decode($data);
+    }
+
+    /**
+     * @param $key
+     * @return bool
+     */
+    public function isSessionKeyValid($key)
+    {
+        $key = $this->objectManager->create('Emagicone\Bridgeconnector\Model\SessionKey')
+            ->getCollection()
+            ->addFieldToFilter('session_key', $key)
+            ->addFieldToFilter('last_activity', ['gt' => date('Y-m-d H:i:s', (time() - Constants::MAX_KEY_LIFETIME))])
+            ->fetchItem();
+
+        if ($key) {
+            $key->setData('last_activity', date('Y-m-d H:i:s'))->save();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function addFailedAttempt()
+    {
+        $timestamp = time();
+
+        // Add failed attempt
+        $this->objectManager->create('Emagicone\Bridgeconnector\Model\FailedLogin')
+            ->setData(['ip' => $this->getRemoteAddress(), 'date_added' => date('Y-m-d H:i:s', $timestamp)])
+            ->save();
+
+        // Select count of failed attempts
+        $collection = $this->objectManager->create('Emagicone\Bridgeconnector\Model\FailedLogin')
+            ->getCollection()
+            ->addFieldToFilter('ip', $this->getRemoteAddress())
+            ->addFieldToFilter(
+                'date_added',
+                ['gt' => date('Y-m-d H:i:s', ($timestamp - Constants::MAX_KEY_LIFETIME))]
+            );
+
+        return $collection->getSize();
+    }
+
+    /**
+     * @param $hash
+     * @return string
+     */
+    public function generateSessionKey($hash)
+    {
+        $timestamp = time();
+        $key = $this->objectManager->create('Emagicone\Bridgeconnector\Model\SessionKey')
+            ->getCollection()
+            ->addFieldToFilter(
+                'last_activity',
+                ['gt' => date('Y-m-d H:i:s', ($timestamp - Constants::MAX_KEY_LIFETIME))]
+            )
+            ->addOrder('last_activity', Collection::SORT_ORDER_DESC)
+            ->fetchItem();
+
+        if ($key && $key->getSessionKey()) {
+            return $key->getSessionKey();
+        }
+
+        // Generate new session key and store it in database
+        $key  = hash('sha256', $hash . $timestamp);
+        $date = date('Y-m-d H:i:s', $timestamp);
+        $this->objectManager->create('Emagicone\Bridgeconnector\Model\SessionKey')
+            ->setData(['session_key' => $key, 'date_added' => $date, 'last_activity' => $date])
+            ->save();
+
+        return $key;
+    }
+
+    /**
+     * @param $key
+     * @return bool
+     */
+    public function deleteSessionKey($key)
+    {
+        if (!$key) {
+            return false;
+        }
+
+        $this->objectManager->create('Emagicone\Bridgeconnector\Model\SessionKey')
+            ->getCollection()
+            ->addFieldToFilter('session_key', ['eq' => $key])
+            ->walk('delete');
+
+        return true;
+    }
+
+    public function clearOldData()
+    {
+        $timestamp  = time();
+        $date       = date('Y-m-d H:i:s', ($timestamp - Constants::MAX_KEY_LIFETIME));
+
+        // Delete old session keys
+        $this->objectManager->create('Emagicone\Bridgeconnector\Model\SessionKey')
+            ->getCollection()
+            ->addFieldToFilter('last_activity', ['lt' => $date])
+            ->walk('delete');
+
+        // Delete old failed login
+        $this->objectManager->create('Emagicone\Bridgeconnector\Model\FailedLogin')
+            ->getCollection()
+            ->addFieldToFilter('date_added', ['lt' => $date])
+            ->walk('delete');
+    }
+
+    public function checkDataChanges($tablesArr = [])
     {
         $arr_result = [];
-        $count = count($tables_arr);
+        $count      = count($tablesArr);
 
         for ($i = 0; $i < $count; $i++) {
-            $table = trim($tables_arr[$i]);
+            $table = trim($tablesArr[$i]);
 
             if (empty($table)) {
                 continue;
             }
 
-            $sql = "SELECT `AUTO_INCREMENT` AS 'auto_increment'
-                FROM INFORMATION_SCHEMA.TABLES
-                WHERE TABLE_SCHEMA = '" . $this->getDbName() . "' AND TABLE_NAME = '" . $table . "'";
-            $result = $this->getSqlResults($sql);
-
-            if ($result && isset($result[0]['auto_increment'])) {
-                $arr_result[$table] = (int)$result[0]['auto_increment'] - 1;
-            } else {
-                $sql = "SELECT
-                        `COLUMN_NAME` AS 'primary_key' INTO @primary_key_field
-                    FROM
-                        `information_schema`.`COLUMNS`
-                    WHERE
-                        (`TABLE_SCHEMA` = '" . $this->getDbName() . "')
-                            AND (`TABLE_NAME` = '" . $table . "')
-                            AND (`COLUMN_KEY` = 'PRI')";
-                $this->execSql($sql);
-
-                $sql = "SET @s = CONCAT('SELECT MAX(', @primary_key_field, ') AS max_id FROM " . $table . "')";
-                $this->execSql($sql);
-
-                $sql = "PREPARE stmt FROM @s";
-                $this->execSql($sql);
-
-                $sql = "EXECUTE stmt;";
-                $result = $this->getSqlResults($sql);
-
-                if ($result && isset($result[0]['max_id'])) {
-                    $arr_result[$table] = (int)$result[0]['max_id'];
-                }
+            try {
+                $arr_result[$table] = $this->objectManager->get('Magento\ImportExport\Model\ResourceModel\Helper')
+                    ->getNextAutoincrement($table) - 1;
+            } catch (\Exception $e) {
+                $arr_result[$table] = '';
             }
         }
 
@@ -388,11 +712,10 @@ class MagentoOverrider extends BridgeConnectorCore
             );
         }
 
-//        return '1|' . base64_encode(Tools::jsonEncode($arr_result));
         return $this->jsonEncode(
             [
                 self::CODE_RESPONSE => self::SUCCESSFUL,
-                self::KEY_MESSAGE    => Tools::jsonEncode($arr_result)
+                self::KEY_MESSAGE   => Tools::jsonEncode($arr_result)
             ]
         );
     }
@@ -403,48 +726,35 @@ class MagentoOverrider extends BridgeConnectorCore
             return false;
         }
 
-        $count_new_orders = 0;
-        $max_order_id = 0;
-        $order_info = [];
+        $max_order_id       = 0;
+        $order_info         = [];
+        $collection_factory = $this->objectManager->get('\Magento\Sales\Model\ResourceModel\Order\CollectionFactory');
 
-        // Select new orders count
-        $sql = 'SELECT COUNT(entity_id) AS CountNewOrder FROM ' . $this->getDbPrefix()
-            . 'sales_order WHERE entity_id > ' . $order_id;
-        $result = $this->getSqlResults($sql);
-        if ($result && isset($result[0]['CountNewOrder'])) {
-            $count_new_orders = (int)$result[0]['CountNewOrder'];
+        // Get max order id
+        $collection = $collection_factory->create();
+        $collection->addAttributeToSort('entity_id', 'desc')
+            ->setPageSize(1)
+            ->load();
+        $item = $collection->fetchItem();
+        if ($item) {
+            $max_order_id = (int)$item->getEntityId();
         }
 
-        // Select maximum order id
-        $sql = 'SELECT MAX(entity_id) AS MaxOrderId FROM ' . $this->getDbPrefix() . 'sales_order';
-        $result = $this->getSqlResults($sql);
-        if ($result && isset($result[0]['MaxOrderId'])) {
-            $max_order_id = (int)$result[0]['MaxOrderId'];
+        // Get new orders
+        $collection = $collection_factory->create();
+        $collection->addAttributeToFilter('entity_id', ['gt' => $order_id]);
+        $count_new_orders = (int)$collection->getSize();
+        foreach ($collection as $order) {
+            $order_info[] = [
+                'order_id'            => $order->getEntityId(),
+                'customer_id'         => $order->getCustomerId(),
+                'grand_total'         => $order->getGrandTotal(),
+                'total_paid'          => $order->getTotalPaid(),
+                'order_currency_code' => $order->getOrderCurrencyCode(),
+                'firstname'           => $order->getCustomerFirstname(),
+                'lastname'            => $order->getCustomerLastname()
+            ];
         }
-
-        // Select new orders
-        $sql = 'SELECT
-                o.`entity_id` AS order_id,
-                o.`customer_id`,
-                o.`grand_total`,
-                o.`total_paid`,
-                o.`order_currency_code`,
-                c.firstname,
-                c.lastname
-            FROM `' . $this->getDbPrefix() . 'sales_order` AS o
-                LEFT JOIN `' . $this->getDbPrefix() . "customer_entity` AS c ON c.`entity_id` = o.`customer_id`
-            WHERE o.`entity_id` > $order_id";
-        $result = $this->getSqlResults($sql);
-
-        if ($result) {
-            $order_info = $result;
-        }
-
-        /*return '1|' . base64_encode(Tools::jsonEncode([
-            'CountNewOrder' => $count_new_orders,
-            'MaxOrderId' => $max_order_id,
-            'OrderInfo' => $order_info
-        ]));*/
 
         return $this->jsonEncode(
             [
@@ -490,91 +800,33 @@ class MagentoOverrider extends BridgeConnectorCore
         $cache_type = $this->getRequestParam('cache_type');
 
         if (!$cache_type) {
-            die($this->jsonEncode(
+            return $this->jsonEncode(
                 [
                     self::CODE_RESPONSE => self::ERROR_CODE_COMMON,
                     self::KEY_MESSAGE   => 'Incorrect cache type'
                 ]
-            ));
+            );
         }
 
         $cache_types = explode(';', $cache_type);
         $count = count($cache_types);
+        $result = '';
 
         for ($i = 0; $i < $count; $i++) {
             Tools::cleanCache($cache_types[$i]);
-            echo "$cache_types[$i] refreshed";
-        }
-    }
-
-    /*public function getCurlLink($ssl = false)
-    {
-        if ($ssl)
-            return $this->getStoreLink(true).'/index.php?fc=module&module=bridgeconnector&controller=bridge&';
-
-        return $this->getStoreLink().'/index.php?fc=module&module=bridgeconnector&controller=bridge&';
-    }*/
-
-    /*public function getUrlForPhpinfo()
-    {
-        return $this->getStoreLink().'/index.php?fc=module&module=bridgeconnector&controller=bridge&phpinfo';
-    }*/
-
-    public function strLen($str)
-    {
-        return strlen($str);
-    }
-
-    public function subStr($str, $start, $length = false)
-    {
-        if ($length) {
-            return substr($str, $start, $length);
+            $result .= "$cache_types[$i] refreshed";
         }
 
-        return substr($str, $start);
+        return $result;
     }
 
-    public function strToLower($str)
+    public function getZipArchiveInstance()
     {
-        return strtolower($str);
+        return $this->objectManager->create('\ZipArchive');
     }
 
-    public function strToUpper($str)
+    public function getZipArchiveCreateValue()
     {
-        return strtoupper($str);
+        return \ZipArchive::CREATE;
     }
-
-    public function jsonEncode($arr)
-    {
-        return Tools::jsonEncode($arr);
-    }
-
-    public function stripSlashes($str)
-    {
-        return stripslashes($str);
-    }
-
-    public function fileGetContents($file)
-    {
-        return file_get_contents($file);
-    }
-
-    public function pSQL($data)
-    {
-        return $data;
-    }
-
-    public function saveConfigData($data)
-    {
-        Tools::saveConfigValue($this->options_name, serialize($data));
-    }
-
-    /*public function getRecursiveIteratorIterator($directory)
-    {
-        return new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($directory),
-            \RecursiveIteratorIterator::LEAVES_ONLY
-        );
-    }*/
-
 }

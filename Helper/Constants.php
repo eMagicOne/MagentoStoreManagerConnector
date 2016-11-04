@@ -1,25 +1,35 @@
 <?php
 /**
- *    This file is part of Bridge Connector.
+ *    This file is part of Magento Store Manager Connector.
  *
- *   Bridge Connector is free software: you can redistribute it and/or modify
+ *   Magento Store Manager Connector is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   Bridge Connector is distributed in the hope that it will be useful,
+ *   Magento Store Manager Connector is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with Bridge Connector.  If not, see <http://www.gnu.org/licenses/>.
+ *   along with Magento Store Manager Connector.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace Emagicone\Bridgeconnector\Helper;
 
+/**
+ * Class Constants
+ * @package Emagicone\Bridgeconnector\Helper
+ */
 class Constants
 {
+    const MODULE_VERSION       = '1.0.1';
+    const REVISION             = 2;
+    const MODULE_NAME          = 'Emagicone_Bridgeconnector';
+    const OPTIONS_NAME         = 'emagicone/bridgeconnector/settings';
+    const RESPONSE_KEY_OUTPUT  = 'output';
+    const RESPONSE_KEY_HEADERS = 'headers';
 
     const DEFAULT_LOGIN             = '1';
     const DEFAULT_PASSWORD          = '1';
@@ -38,6 +48,7 @@ class Constants
     const TABLE_FAILED_LOGIN        = 'bridgeconnector_failed_login';
     const CONFIG_PATH_SETTINGS      = 'emagicone/bridgeconnector/settings';
     const CRYPT_KEY                 = "EMO_bridgeconnector\0\0\0\0\0";
+    const CRYPT_IV                  = "EMO_bridgeconnec";
     const EXCLUDE_DB_TABLES_DEFAULT = 'ui_bookmark'; /* separated by ; */
-
+    const MAX_KEY_LIFETIME          = 86400; /* 24 hours */
 }

@@ -1,39 +1,40 @@
 <?php
 /**
- *    This file is part of Bridge Connector.
+ *    This file is part of Magento Store Manager Connector.
  *
- *   Bridge Connector is free software: you can redistribute it and/or modify
+ *   Magento Store Manager Connector is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   Bridge Connector is distributed in the hope that it will be useful,
+ *   Magento Store Manager Connector is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with Bridge Connector.  If not, see <http://www.gnu.org/licenses/>.
+ *   along with Magento Store Manager Connector.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace Emagicone\Bridgeconnector\Block\Adminhtml\Settings\Edit\Tab;
 
 use Emagicone\Bridgeconnector\Helper\Constants;
 use Emagicone\Bridgeconnector\Helper\Tools;
+use Magento\Backend\Block\Widget\Form\Generic;
+use Magento\Backend\Block\Widget\Tab\TabInterface;
 
 /**
  * Settings edit form main tab
  */
-class Main extends \Magento\Backend\Block\Widget\Form\Generic implements \Magento\Backend\Block\Widget\Tab\TabInterface
+class Main extends Generic implements TabInterface
 {
-
     /**
      * Prepare form
      *
      * @return $this
      * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
-    protected function _prepareForm()
+    public function _prepareForm()
     {
         /*
          * Checking if user have permissions to save information
@@ -55,11 +56,13 @@ class Main extends \Magento\Backend\Block\Widget\Form\Generic implements \Magent
             'login',
             'text',
             [
-                'name' => 'login',
-                'label' => __('Login'),
-                'title' => __('Login'),
-                'note' => __('Login for accessing Bridge Connector from eMagicOne Store Manager for Magento'),
-                'value' => $storedSettings['login'],
+                'name'     => 'login',
+                'label'    => __('Login'),
+                'title'    => __('Login'),
+                'note'     => __(
+                    'Login for accessing Magento Store Manager Connector from eMagicOne Store Manager for Magento'
+                ),
+                'value'    => $storedSettings['login'],
                 'required' => true,
                 'disabled' => $isElementDisabled
             ]
@@ -69,11 +72,13 @@ class Main extends \Magento\Backend\Block\Widget\Form\Generic implements \Magent
             'password',
             'password',
             [
-                'name' => 'password',
-                'label' => __('Password'),
-                'title' => __('Password'),
-                'note' => __('Password for accessing Bridge Connector from eMagicOne Store Manager for Magento'),
-                'value' => $storedSettings['password'],
+                'name'     => 'password',
+                'label'    => __('Password'),
+                'title'    => __('Password'),
+                'note'     => __(
+                    'Password for accessing Magento Store Manager Connector from eMagicOne Store Manager for Magento'
+                ),
+                'value'    => $storedSettings['password'],
                 'required' => true,
                 'disabled' => $isElementDisabled
             ]
@@ -242,13 +247,13 @@ class Main extends \Magento\Backend\Block\Widget\Form\Generic implements \Magent
      * @param string $resourceId
      * @return bool
      */
-    protected function _isAllowedAction($resourceId)
+    public function _isAllowedAction($resourceId)
     {
         return $this->_authorization->isAllowed($resourceId);
     }
 
-    public function isAjaxLoaded() {
+    public function isAjaxLoaded()
+    {
         return false;
     }
-
 }

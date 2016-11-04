@@ -1,32 +1,35 @@
 <?php
 /**
- *    This file is part of Bridge Connector.
+ *    This file is part of Magento Store Manager Connector.
  *
- *   Bridge Connector is free software: you can redistribute it and/or modify
+ *   Magento Store Manager Connector is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   Bridge Connector is distributed in the hope that it will be useful,
+ *   Magento Store Manager Connector is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with Bridge Connector.  If not, see <http://www.gnu.org/licenses/>.
+ *   along with Magento Store Manager Connector.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace Emagicone\Bridgeconnector\Block\Adminhtml\Settings;
 
+/**
+ * Class Edit
+ * @package Emagicone\Bridgeconnector\Block\Adminhtml\Settings
+ */
 class Edit extends \Magento\Backend\Block\Widget\Form\Container
 {
-
     /**
      * Initialize settings edit block
      *
      * @return void
      */
-    protected function _construct()
+    public function _construct()
     {
         $this->_blockGroup = 'Emagicone_Bridgeconnector';
         $this->_controller = 'adminhtml_settings';
@@ -60,7 +63,7 @@ class Edit extends \Magento\Backend\Block\Widget\Form\Container
      * @param string $resourceId
      * @return bool
      */
-    protected function _isAllowedAction($resourceId)
+    public function _isAllowedAction($resourceId)
     {
         return $this->_authorization->isAllowed($resourceId);
     }
@@ -71,7 +74,7 @@ class Edit extends \Magento\Backend\Block\Widget\Form\Container
      *
      * @return string
      */
-    protected function _getSaveAndContinueUrl()
+    public function _getSaveAndContinueUrl()
     {
         return $this->getUrl(
             '*/*/save',
@@ -84,7 +87,7 @@ class Edit extends \Magento\Backend\Block\Widget\Form\Container
      *
      * @return \Magento\Framework\View\Element\AbstractBlock
      */
-    protected function _prepareLayout()
+    public function _prepareLayout()
     {
         $this->_formScripts[] = "
             function toggleEditor() {
@@ -98,5 +101,4 @@ class Edit extends \Magento\Backend\Block\Widget\Form\Container
 
         return parent::_prepareLayout();
     }
-
 }

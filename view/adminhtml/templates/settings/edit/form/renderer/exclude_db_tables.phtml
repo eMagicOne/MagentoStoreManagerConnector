@@ -1,41 +1,54 @@
 <?php
 /**
- *    This file is part of Bridge Connector.
+ *    This file is part of Magento Store Manager Connector.
  *
- *   Bridge Connector is free software: you can redistribute it and/or modify
+ *   Magento Store Manager Connector is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   Bridge Connector is distributed in the hope that it will be useful,
+ *   Magento Store Manager Connector is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with Bridge Connector.  If not, see <http://www.gnu.org/licenses/>.
+ *   along with Magento Store Manager Connector.  If not, see <http://www.gnu.org/licenses/>.
  */
 ?>
-<div class="admin__field field field-exclude_db_tables with-note" data-ui-id="bridgeconnector-settings-edit-tab-bridge-settings-fieldset-element-form-field-exclude-db-tables">
-    <label class="label admin__field-label" for="settings_exclude_db_tables" data-ui-id="bridgeconnector-settings-edit-tab-main-fieldset-element-text-exclude-db-tables-label"><span>Exclude Tables</span></label>
+<div class="admin__field field field-exclude_db_tables with-note"
+     data-ui-id="bridgeconnector-settings-edit-tab-bridge-settings-fieldset-element-form-field-exclude-db-tables">
+    <label class="label admin__field-label" for="settings_exclude_db_tables"
+           data-ui-id="bridgeconnector-settings-edit-tab-main-fieldset-element-text-exclude-db-tables-label">
+        <span>Exclude Tables</span>
+    </label>
     <div class="admin__field-control control">
         <div id="bridgeconnector_exclude_db_tables_container" style="height: 300px; overflow: scroll">
             <?php
+            $escaper = \Emagicone\Bridgeconnector\Helper\Tools::getEscaper();
             $storedSettings = \Emagicone\Bridgeconnector\Helper\Tools::getStoredSettings();
             $excludedTables = empty($storedSettings['exclude_db_tables'])
                 ? []
                 : explode(';', $storedSettings['exclude_db_tables']);
-            $dbTables = \Emagicone\Bridgeconnector\Helper\Tools::getResource()->getConnection()->fetchCol('SHOW TABLES');
+            $dbTables = \Emagicone\Bridgeconnector\Helper\Tools::getResource()->getConnection()
+                ->fetchCol('SHOW TABLES');
             $count = count($dbTables);
 
             for ($i = 0; $i < $count; $i++) {
                 $checked = in_array($dbTables[$i], $excludedTables) ? 'checked' : '';
-                echo '<label><input type="checkbox" name="bridgeconnector_exclude_db_tables_checked[]" value="'
-                    . $dbTables[$i] . '" ' . $checked . '>' . $dbTables[$i] . '</input></label><br>';
+                ?>
+                <label>
+                    <input type="checkbox" name="bridgeconnector_exclude_db_tables_checked[]"
+                           value="<?php echo $escaper->escapeHtml($dbTables[$i]) ?>"
+                            <?php echo $escaper->escapeHtml($checked) ?>/>
+                    <?php echo $escaper->escapeHtml($dbTables[$i])?>
+                </label><br>
+            <?php
             }
-
             ?>
         </div>
-        <div class="note" id="exclude_db_tables-note">Do not get data from tables selected here. Use this to reduce size of the data retrieved from module</div>
+        <div class="note" id="exclude_db_tables-note">
+            Do not get data from tables selected here. Use this to reduce size of the data retrieved from module
+        </div>
     </div>
 </div>

@@ -1,59 +1,61 @@
 <?php
 /**
- *    This file is part of Bridge Connector.
+ *    This file is part of Magento Store Manager Connector.
  *
- *   Bridge Connector is free software: you can redistribute it and/or modify
+ *   Magento Store Manager Connector is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   Bridge Connector is distributed in the hope that it will be useful,
+ *   Magento Store Manager Connector is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with Bridge Connector.  If not, see <http://www.gnu.org/licenses/>.
+ *   along with Magento Store Manager Connector.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace Emagicone\Bridgeconnector\Controller\Adminhtml\Settings;
 
 use Magento\Backend\App\Action;
 use Emagicone\Bridgeconnector\Helper\Tools;
+use Magento\Framework\View\Result\PageFactory;
+use Magento\Framework\Registry;
 
+/**
+ * Class Edit
+ * @package Emagicone\Bridgeconnector\Controller\Adminhtml\Settings
+ */
 class Edit extends \Magento\Backend\App\Action
 {
     /**
-     * Core registry
-     *
-     * @var \Magento\Framework\Registry
+     * @var Registry|null
      */
-    protected $_coreRegistry = null;
+    public $coreRegistry = null;
 
     /**
-     * @var \Magento\Framework\View\Result\PageFactory
+     * @var PageFactory
      */
-    protected $resultPageFactory;
+    public $resultPageFactory;
 
     /**
+     * Edit constructor.
      * @param Action\Context $context
-     * @param \Magento\Framework\View\Result\PageFactory $resultPageFactory
-     * @param \Magento\Framework\Registry $registry
+     * @param PageFactory $resultPageFactory
+     * @param Registry $registry
      */
-    public function __construct(
-        Action\Context $context,
-        \Magento\Framework\View\Result\PageFactory $resultPageFactory,
-        \Magento\Framework\Registry $registry
-    ) {
+    public function __construct(Action\Context $context, PageFactory $resultPageFactory, Registry $registry)
+    {
         $this->resultPageFactory = $resultPageFactory;
-        $this->_coreRegistry = $registry;
+        $this->coreRegistry = $registry;
         parent::__construct($context);
     }
 
     /**
      * {@inheritdoc}
      */
-    protected function _isAllowed()
+    public function _isAllowed()
     {
         return $this->_authorization->isAllowed('Emagicone_Bridgeconnector::save');
     }
@@ -63,7 +65,7 @@ class Edit extends \Magento\Backend\App\Action
      *
      * @return \Magento\Backend\Model\View\Result\Page
      */
-    protected function _initAction()
+    public function _initAction()
     {
         // load layout, set active menu and breadcrumbs
         /** @var \Magento\Backend\Model\View\Result\Page $resultPage */
@@ -88,6 +90,11 @@ class Edit extends \Magento\Backend\App\Action
                 ->addWarning('Default login and password are "1". Change them because of security reasons, please!');
         }
 
+        if (!Tools::isPasswordEncryptedUsingBlockCipher()) {
+            $this->messageManager
+                ->addWarning('Required! Change password to encrypt it in better way!');
+        }
+
         /** @var \Magento\Backend\Model\View\Result\Page $resultPage */
         $resultPage = $this->_initAction();
         $resultPage->addBreadcrumb(__('Edit Settings'), __('Edit Settings'));
@@ -97,5 +104,4 @@ class Edit extends \Magento\Backend\App\Action
 
         return $resultPage;
     }
-
 }

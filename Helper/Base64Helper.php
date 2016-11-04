@@ -16,23 +16,19 @@
  *   along with Magento Store Manager Connector.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace Emagicone\Bridgeconnector\Block\Adminhtml\Settings\Edit;
+namespace Emagicone\Bridgeconnector\Helper;
 
 /**
- * Admin page left menu
+ * Class Base64Helper
+ * @package Emagicone\Bridgeconnector\Helper
  */
-class Tabs extends \Magento\Backend\Block\Widget\Tabs
+class Base64Helper extends \Zend_XmlRpc_Value_Base64
 {
     /**
-     * Constructor
-     *
-     * @return void
+     * @return mixed
      */
-    public function _construct()
+    public function getValueEncoded()
     {
-        parent::_construct();
-        $this->setId('bridgeconnector_settings_edit_tabs');
-        $this->setDestElementId('edit_form');
-        $this->setTitle(__('Settings'));
+        return $this->_value;
     }
 }

@@ -16,23 +16,27 @@
  *   along with Magento Store Manager Connector.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace Emagicone\Bridgeconnector\Block\Adminhtml\Settings\Edit;
+namespace Emagicone\Bridgeconnector\Helper;
 
 /**
- * Admin page left menu
+ * Class GzFile
+ * @package Emagicone\Bridgeconnector\Helper
  */
-class Tabs extends \Magento\Backend\Block\Widget\Tabs
+class GzFile extends \Magento\Framework\Archive\Helper\File\Gz
 {
-    /**
-     * Constructor
-     *
-     * @return void
-     */
-    public function _construct()
+    public function gzOpen($mode)
     {
-        parent::_construct();
-        $this->setId('bridgeconnector_settings_edit_tabs');
-        $this->setDestElementId('edit_form');
-        $this->setTitle(__('Settings'));
+        $this->_open($mode);
+    }
+
+    public function gzWrite($data)
+    {
+        $this->_write($data);
+    }
+
+    public function gzClose()
+    {
+        $this->_close();
+        $this->_fileHandler = null;
     }
 }

@@ -16,23 +16,21 @@
  *   along with Magento Store Manager Connector.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace Emagicone\Bridgeconnector\Block\Adminhtml\Settings\Edit;
+namespace Emagicone\Bridgeconnector\Model\ResourceModel\FailedLogin;
+
+use Magento\Framework\Model\ResourceModel\Db\Collection\AbstractCollection;
 
 /**
- * Admin page left menu
+ * Class Collection
+ * @package Emagicone\Bridgeconnector\Model\ResourceModel\FailedLogin
  */
-class Tabs extends \Magento\Backend\Block\Widget\Tabs
+class Collection extends AbstractCollection
 {
-    /**
-     * Constructor
-     *
-     * @return void
-     */
     public function _construct()
     {
-        parent::_construct();
-        $this->setId('bridgeconnector_settings_edit_tabs');
-        $this->setDestElementId('edit_form');
-        $this->setTitle(__('Settings'));
+        $this->_init(
+            'Emagicone\Bridgeconnector\Model\FailedLogin',
+            'Emagicone\Bridgeconnector\Model\ResourceModel\FailedLogin'
+        );
     }
 }

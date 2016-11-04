@@ -1,30 +1,33 @@
 <?php
 /**
- *    This file is part of Bridge Connector.
+ *    This file is part of Magento Store Manager Connector.
  *
- *   Bridge Connector is free software: you can redistribute it and/or modify
+ *   Magento Store Manager Connector is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   Bridge Connector is distributed in the hope that it will be useful,
+ *   Magento Store Manager Connector is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with Bridge Connector.  If not, see <http://www.gnu.org/licenses/>.
+ *   along with Magento Store Manager Connector.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace Emagicone\Bridgeconnector\Helper;
 
-use Emagicone\Bridgeconnector\Helper\Constants;
 use Magento\Framework\Config\ConfigOptionsListConstants;
 use Magento\Framework\App\Config\ScopeConfigInterface;
+use Zend\Crypt\BlockCipher;
 
+/**
+ * Class Tools
+ * @package Emagicone\Bridgeconnector\Helper
+ */
 class Tools
 {
-
     private static $object_manager;
     private static $resource;
     private static $logger;
@@ -33,6 +36,44 @@ class Tools
     private static $json_decoder;
     private static $deployment_config;
     private static $cache_list;
+    private static $file;
+    private static $escaper;
+    private static $mcrypt;
+    private static $mcrypt_block_cipher;
+
+    private static function getBase64($value, $alreadyEncoded)
+    {
+        return self::getObjectManager()->create(
+            'Emagicone\Bridgeconnector\Helper\Base64Helper',
+            ['value' => $value, 'alreadyEncoded' => $alreadyEncoded]
+        );
+    }
+
+    /*
+     * @deprecated Use getMcryptBlockCipher() instead
+     */
+    private static function getMcrypt()
+    {
+        if (!self::$mcrypt) {
+            self::$mcrypt = self::getObjectManager()->create(
+                'Zend\Crypt\Symmetric\Mcrypt',
+                ['options' => ['key' => Constants::CRYPT_KEY, 'iv' => Constants::CRYPT_IV]]
+            );
+        }
+
+        return self::$mcrypt;
+    }
+
+    private static function getMcryptBlockCipher()
+    {
+        if (!self::$mcrypt_block_cipher) {
+            self::$mcrypt_block_cipher = BlockCipher::factory('mcrypt');
+            self::$mcrypt_block_cipher->setKey(Constants::CRYPT_KEY);
+            self::$mcrypt_block_cipher->setSalt(Constants::CRYPT_IV);
+        }
+
+        return self::$mcrypt_block_cipher;
+    }
 
     public static function getObjectManager()
     {
@@ -55,8 +96,11 @@ class Tools
     public static function getLogger()
     {
         if (!self::$logger) {
-            $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/emagicone_mobassistantconnector.log');
-            self::$logger = new \Zend\Log\Logger();
+            $writer = self::getObjectManager()->create(
+                'Zend\Log\Writer\Stream',
+                ['streamOrUrl' => BP . '/var/log/emagicone_mobassistantconnector.log']
+            );
+            self::$logger = self::getObjectManager()->create('Zend\Log\Logger');
             self::$logger->addWriter($writer);
         }
 
@@ -89,10 +133,20 @@ class Tools
         return self::$cache_list;
     }
 
+    public static function getFile()
+    {
+        if (!self::$file) {
+            self::$file = self::getObjectManager()->get('Magento\Framework\Filesystem\Driver\File');
+        }
+
+        return self::$file;
+    }
+
     public static function saveConfigValue($path, $value, $scope = ScopeConfigInterface::SCOPE_TYPE_DEFAULT)
     {
         if (!self::$config) {
-            self::$config = self::getObjectManager()->create('Magento\Framework\App\Config\ConfigResource\ConfigInterface');
+            self::$config = self::getObjectManager()
+                ->create('Magento\Framework\App\Config\ConfigResource\ConfigInterface');
         }
 
         return self::$config->saveConfig($path, $value, $scope, 0);
@@ -118,8 +172,12 @@ class Tools
 
     public static function translate($message_id)
     {
-        $message = new \Magento\Framework\Phrase($message_id);
-        return $message->__toString();
+        return self::getObjectManager()->create('Magento\Framework\Phrase', ['text' => $message_id])->__toString();
+    }
+
+    public static function unserialize($data)
+    {
+        return self::getObjectManager()->get('Magento\Framework\Unserialize\Unserialize')->unserialize($data);
     }
 
     public static function getDbTablePrefix()
@@ -127,48 +185,70 @@ class Tools
         return self::getDeploymentConfig()->get(ConfigOptionsListConstants::CONFIG_PATH_DB_PREFIX);
     }
 
-    public static function cleanCache($typeCode) {
+    public static function cleanCache($typeCode)
+    {
         self::getCacheList()->cleanType($typeCode);
     }
 
     public static function getEncryptedData($data)
     {
-        return call_user_func(
-            'base64_encode',
-            mcrypt_encrypt(MCRYPT_RIJNDAEL_128, Constants::CRYPT_KEY, $data, MCRYPT_MODE_ECB)
-        );
+        return self::getMcryptBlockCipher()->encrypt($data);
     }
 
     public static function getDecryptedData($data)
     {
-        return trim(
-            mcrypt_decrypt(
-                MCRYPT_RIJNDAEL_128,
-                Constants::CRYPT_KEY,
-                call_user_func('base64_decode', $data),
-                MCRYPT_MODE_ECB
-            )
-        );
+        return self::getMcrypt()->decrypt(self::base64Decode($data));
+    }
+
+    public static function getDecryptedDataUsingBlockCipher($data)
+    {
+        return self::getMcryptBlockCipher()->decrypt($data);
     }
 
     public static function getStoredSettings()
     {
-        return unserialize(self::getConfigValue(Constants::CONFIG_PATH_SETTINGS));
+        return self::unserialize(self::getConfigValue(Constants::CONFIG_PATH_SETTINGS));
     }
 
     public static function isLoginPasswordDefault()
     {
-        $isDefault = false;
         $data = self::getStoredSettings();
 
-        if (
-            $data['login'] == Constants::DEFAULT_LOGIN
-            && self::getDecryptedData($data['password']) == Constants::DEFAULT_PASSWORD
-        ) {
-            $isDefault = true;
-        }
-
-        return $isDefault;
+        return Constants::DEFAULT_LOGIN == $data['login']
+            && Constants::DEFAULT_PASSWORD == self::getDecryptedDataUsingBlockCipher($data['password']);
     }
 
+    public static function isPasswordEncryptedUsingBlockCipher($password = false)
+    {
+        if (!$password) {
+            $data = self::getStoredSettings();
+            $password = $data['password'];
+        }
+
+        return self::getDecryptedDataUsingBlockCipher($password) !== false;
+    }
+
+    public static function getUploader($filename)
+    {
+        return Tools::getObjectManager()->create('Magento\MediaStorage\Model\File\Uploader', ['fileId' => $filename]);
+    }
+
+    public static function getEscaper()
+    {
+        if (!self::$escaper) {
+            self::$escaper = self::getObjectManager()->create('Magento\Framework\Escaper');
+        }
+
+        return self::$escaper;
+    }
+
+    public static function base64Encode($data)
+    {
+        return self::getBase64($data, false)->getValueEncoded();
+    }
+
+    public static function base64Decode($data)
+    {
+        return self::getBase64($data, true)->getValue();
+    }
 }
