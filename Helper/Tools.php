@@ -152,6 +152,16 @@ class Tools
         return self::$config->saveConfig($path, $value, $scope, 0);
     }
 
+    public static function deleteConfigValue($path, $scope = ScopeConfigInterface::SCOPE_TYPE_DEFAULT)
+    {
+        if (!self::$config) {
+            self::$config = self::getObjectManager()
+                ->create('Magento\Framework\App\Config\ConfigResource\ConfigInterface');
+        }
+
+        return self::$config->deleteConfig($path, $scope, 0);
+    }
+
     public static function jsonEncode($data)
     {
         if (!self::$json_encoder) {
