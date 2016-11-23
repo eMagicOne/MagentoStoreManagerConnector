@@ -86,9 +86,9 @@ class Save extends \Magento\Backend\App\Action
     /**
      * {@inheritdoc}
      */
-    public function _isAllowed()
+    protected function _isAllowed()
     {
-        return $this->_authorization->isAllowed('Emagicone_Bridgeconnector::save');
+        return $this->_authorization->isAllowed('Emagicone_Bridgeconnector::edit');
     }
 
     /**

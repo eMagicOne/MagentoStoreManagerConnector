@@ -3,11 +3,10 @@
     <acl>
         <resources>
             <resource id="Magento_Backend::admin">
-                <resource id="Magento_Backend::content">
-                    <resource id="Emagicone_Bridgeconnector::settings">
-                        <resource id="Emagicone_Bridgeconnector::setting" title="Settings" sortOrder="10">
-                            <resource id="Emagicone_Bridgeconnector::save" title="Save Settings" sortOrder="10" />
-                        </resource>
+                <resource id="Emagicone_Bridgeconnector::settings" title="Magento Store Manager Connector" sortOrder="110">
+                    <resource id="Emagicone_Bridgeconnector::setting" title="Settings">
+                        <resource id="Emagicone_Bridgeconnector::view" title="View" sortOrder="10"/>
+                        <resource id="Emagicone_Bridgeconnector::edit" title="Edit" sortOrder="20"/>
                     </resource>
                 </resource>
             </resource>

@@ -22,15 +22,24 @@
            data-ui-id="bridgeconnector-settings-edit-tab-main-fieldset-element-text-allow-compression-label">
         <span>Allow Compression</span>
     </label>
+
     <div class="admin__field-control control">
         <div class="switcher" onselectstart="return false;">
             <?php $storedSettings = \Emagicone\Bridgeconnector\Helper\Tools::getStoredSettings(); ?>
             <input type="checkbox" id="allow_compression_switcher" name="allow_compression" value="1"
-                <?php echo $storedSettings['allow_compression'] == 1 ? 'checked' : ''; ?>>
+                <?php
+                    echo $storedSettings['allow_compression'] == 1 ? 'checked' : '';
+                    echo $tmpBlock->getAuthorization()->isAllowed('Emagicone_Bridgeconnector::edit')
+                        ? ''
+                        : ' disabled="disabled"';
+                ?>
+            >
+
             <label class="switcher-label" for="allow_compression_switcher" data-text-on="Compression allowed"
                    data-text-off="Compression forbidden">
             </label>
         </div>
+
         <div class="note" id="exclude_db_tables-note">
             Compression of generated dump file. It is recommended for save space and faster getting data in
             Store Manager

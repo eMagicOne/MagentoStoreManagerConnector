@@ -24,8 +24,8 @@ namespace Emagicone\Bridgeconnector\Helper;
  */
 class Constants
 {
-    const MODULE_VERSION       = '1.0.2';
-    const REVISION             = 3;
+    const MODULE_VERSION       = '1.0.3';
+    const REVISION             = 4;
     const MODULE_NAME          = 'Emagicone_Bridgeconnector';
     const OPTIONS_NAME         = 'emagicone/bridgeconnector/settings';
     const RESPONSE_KEY_OUTPUT  = 'output';

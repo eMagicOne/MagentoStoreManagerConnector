@@ -1,8 +1,7 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
     <menu>
-        <add id="Emagicone_Company::bridgeconnector" title="Magento Store Manager Connector" module="Emagicone_Bridgeconnector" sortOrder="100" resource="Emagicone_Company::bridgeconnector"/>
-        <add id="Emagicone_Bridgeconnector::settings" title="Settings" module="Emagicone_Bridgeconnector" parent="Emagicone_Company::bridgeconnector" resource="Emagicone_Bridgeconnector::settings"/>
+        <add id="Emagicone_Bridgeconnector::settings" title="Magento Store Manager Connector" module="Emagicone_Bridgeconnector" sortOrder="100" dependsOnModule="Emagicone_Bridgeconnector" resource="Emagicone_Bridgeconnector::settings"/>
         <add id="Emagicone_Bridgeconnector::setting" title="Settings" module="Emagicone_Bridgeconnector" parent="Emagicone_Bridgeconnector::settings" action="bridgeconnector/settings/edit" resource="Emagicone_Bridgeconnector::setting"/>
     </menu>
 </config>

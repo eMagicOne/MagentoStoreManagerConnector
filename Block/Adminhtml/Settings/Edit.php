@@ -38,7 +38,7 @@ class Edit extends \Magento\Backend\Block\Widget\Form\Container
 
         $this->buttonList->remove('back');
 
-        if ($this->_isAllowedAction('Emagicone_Bridgeconnector::save')) {
+        if ($this->_isAllowedAction('Emagicone_Bridgeconnector::edit')) {
             $this->buttonList->add(
                 'saveandcontinue',
                 [

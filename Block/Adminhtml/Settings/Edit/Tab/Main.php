@@ -39,7 +39,7 @@ class Main extends Generic implements TabInterface
         /*
          * Checking if user have permissions to save information
          */
-        if ($this->_isAllowedAction('Emagicone_Bridgeconnector::save')) {
+        if ($this->_isAllowedAction('Emagicone_Bridgeconnector::edit')) {
             $isElementDisabled = false;
         } else {
             $isElementDisabled = true;
