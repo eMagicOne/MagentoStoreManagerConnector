@@ -22,17 +22,21 @@ namespace Emagicone\Bridgeconnector\Helper;
  * Class Constants
  * @package Emagicone\Bridgeconnector\Helper
  */
+
+define('USER_PASSWORD', substr(time().rand(),0,9));
+
 class Constants
 {
-    const MODULE_VERSION       = '1.0.3';
+    const MODULE_VERSION       = '1.0.4';
     const REVISION             = 4;
     const MODULE_NAME          = 'Emagicone_Bridgeconnector';
     const OPTIONS_NAME         = 'emagicone/bridgeconnector/settings';
     const RESPONSE_KEY_OUTPUT  = 'output';
     const RESPONSE_KEY_HEADERS = 'headers';
 
-    const DEFAULT_LOGIN             = '1';
-    const DEFAULT_PASSWORD          = '1';
+    const DEFAULT_LOGIN             = 'user';
+    const EMONE                     = 'em1';
+    const DEFAULT_PASSWORD          = self::EMONE.USER_PASSWORD;  /* expression not allowed in const only math*/
     const DEFAULT_ALLOW_COMPRESSION = 1;
     const DEFAULT_COMPRESS_LEVEL    = 6;      /* 1 - 9 */
     const DEFAULT_LIMIT_QUERY_SIZE  = 8192;   /* kB */
@@ -51,4 +55,6 @@ class Constants
     const CRYPT_IV                  = "EMO_bridgeconnec";
     const EXCLUDE_DB_TABLES_DEFAULT = 'ui_bookmark'; /* separated by ; */
     const MAX_KEY_LIFETIME          = 86400; /* 24 hours */
+    const INI_FILE                  = 'ini_file';
 }
+

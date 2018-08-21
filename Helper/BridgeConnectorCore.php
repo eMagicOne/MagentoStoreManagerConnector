@@ -107,6 +107,8 @@ abstract class BridgeConnectorCore
     abstract public function base64Decode($data);
     abstract public function getZipArchiveInstance();
     abstract public function getZipArchiveCreateValue();
+    abstract public function getPaymentAndShippingMethods();
+
 
     public function getCodeResponse()
     {

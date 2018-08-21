@@ -20,7 +20,6 @@ namespace Emagicone\Bridgeconnector\Helper;
 
 use Magento\Framework\Config\ConfigOptionsListConstants;
 use Magento\Framework\App\Config\ScopeConfigInterface;
-use Zend\Crypt\BlockCipher;
 
 /**
  * Class Tools
@@ -49,30 +48,64 @@ class Tools
         );
     }
 
-    /*
-     * @deprecated Use getMcryptBlockCipher() instead
-     */
-    private static function getMcrypt()
+    public static function base64Encode($data)
     {
-        if (!self::$mcrypt) {
-            self::$mcrypt = self::getObjectManager()->create(
-                'Zend\Crypt\Symmetric\Mcrypt',
-                ['options' => ['key' => Constants::CRYPT_KEY, 'iv' => Constants::CRYPT_IV]]
-            );
-        }
+        return self::getBase64($data, false)->getValueEncoded();
+    }
 
-        return self::$mcrypt;
+    public static function base64Decode($data)
+    {
+        return self::getBase64($data, true)->getValue();
     }
 
     private static function getMcryptBlockCipher()
     {
+        error_reporting(E_ALL ^ E_DEPRECATED);
         if (!self::$mcrypt_block_cipher) {
-            self::$mcrypt_block_cipher = BlockCipher::factory('mcrypt');
+            self::$mcrypt_block_cipher = \Zend\Crypt\BlockCipher::factory('mcrypt');
             self::$mcrypt_block_cipher->setKey(Constants::CRYPT_KEY);
             self::$mcrypt_block_cipher->setSalt(Constants::CRYPT_IV);
         }
 
         return self::$mcrypt_block_cipher;
+    }
+
+    public static function getEncryptedData($data)
+    {
+        if (version_compare(phpversion(), '7.1','<')) {
+            return self::getMcryptBlockCipher()->encrypt($data);
+        }
+
+        return self::getObjectManager()->get(\Magento\Framework\Encryption\EncryptorInterface::class)->encrypt($data);
+    }
+
+    public static function getDecryptedData($data)
+    {
+        if (version_compare(phpversion(), '7.1','<')) {
+            return self::getMcryptBlockCipher()->decrypt($data);
+        }
+
+        return self::getObjectManager()->get(\Magento\Framework\Encryption\EncryptorInterface::class)->decrypt($data);
+    }
+
+    public static function isLoginPasswordDefault()
+    {
+        $data = self::getStoredSettings();
+
+        return Constants::DEFAULT_LOGIN == $data['login']
+            && (strpos(self::getDecryptedData($data['password']), Constants::EMONE) !== false) ? true : false;
+        //todo if needed will add check length
+    }
+
+    public static function isPasswordEncryptedUsingBlockCipher($password = false)
+    {
+        if (!$password) {
+            $data = self::getStoredSettings();
+            $password = $data['password'];
+            return self::getDecryptedData($password) !== $password;
+        }
+
+        return self::getDecryptedData($password) !== false;
     }
 
     public static function getObjectManager()
@@ -200,42 +233,9 @@ class Tools
         self::getCacheList()->cleanType($typeCode);
     }
 
-    public static function getEncryptedData($data)
-    {
-        return self::getMcryptBlockCipher()->encrypt($data);
-    }
-
-    public static function getDecryptedData($data)
-    {
-        return self::getMcrypt()->decrypt(self::base64Decode($data));
-    }
-
-    public static function getDecryptedDataUsingBlockCipher($data)
-    {
-        return self::getMcryptBlockCipher()->decrypt($data);
-    }
-
     public static function getStoredSettings()
     {
         return self::unserialize(self::getConfigValue(Constants::CONFIG_PATH_SETTINGS));
-    }
-
-    public static function isLoginPasswordDefault()
-    {
-        $data = self::getStoredSettings();
-
-        return Constants::DEFAULT_LOGIN == $data['login']
-            && Constants::DEFAULT_PASSWORD == self::getDecryptedDataUsingBlockCipher($data['password']);
-    }
-
-    public static function isPasswordEncryptedUsingBlockCipher($password = false)
-    {
-        if (!$password) {
-            $data = self::getStoredSettings();
-            $password = $data['password'];
-        }
-
-        return self::getDecryptedDataUsingBlockCipher($password) !== false;
     }
 
     public static function getUploader($filename)
@@ -250,15 +250,5 @@ class Tools
         }
 
         return self::$escaper;
-    }
-
-    public static function base64Encode($data)
-    {
-        return self::getBase64($data, false)->getValueEncoded();
-    }
-
-    public static function base64Decode($data)
-    {
-        return self::getBase64($data, true)->getValue();
     }
 }

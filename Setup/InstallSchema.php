@@ -108,17 +108,17 @@ class InstallSchema implements InstallSchemaInterface
         $tmpDir = str_replace(str_replace('\\', '/', BP), '', $tmpDir);
 
         $data = [
-            'login' => Helper\Constants::DEFAULT_LOGIN,
-            'password' => Helper\Tools::getEncryptedData(Helper\Constants::DEFAULT_PASSWORD),
-            'bridge_hash' => md5(Helper\Constants::DEFAULT_LOGIN . Helper\Constants::DEFAULT_PASSWORD),
-            'tmp_dir' => $tmpDir,
-            'allow_compression' => Helper\Constants::DEFAULT_ALLOW_COMPRESSION,
-            'compress_level' => Helper\Constants::DEFAULT_COMPRESS_LEVEL,
-            'limit_query_size' => Helper\Constants::DEFAULT_LIMIT_QUERY_SIZE,
-            'package_size' => Helper\Constants::DEFAULT_PACKAGE_SIZE,
-            'exclude_db_tables' => implode(';', $this->getExcludeDbTablesDefault($installer)),
-            'allowed_ips' => Helper\Constants::DEFAULT_ALLOWED_IPS,
-            'last_clear_date' => time(),
+            'login'                 => Helper\Constants::DEFAULT_LOGIN,
+            'password'              => Helper\Tools::getEncryptedData(Helper\Constants::DEFAULT_PASSWORD),
+            'bridge_hash'           => md5(Helper\Constants::DEFAULT_LOGIN . Helper\Constants::DEFAULT_PASSWORD),
+            'tmp_dir'               => $tmpDir,
+            'allow_compression'     => Helper\Constants::DEFAULT_ALLOW_COMPRESSION,
+            'compress_level'        => Helper\Constants::DEFAULT_COMPRESS_LEVEL,
+            'limit_query_size'      => Helper\Constants::DEFAULT_LIMIT_QUERY_SIZE,
+            'package_size'          => Helper\Constants::DEFAULT_PACKAGE_SIZE,
+            'exclude_db_tables'     => implode(';', $this->getExcludeDbTablesDefault($installer)),
+            'allowed_ips'           => Helper\Constants::DEFAULT_ALLOWED_IPS,
+            'last_clear_date'       => time(),
         ];
 
         Helper\Tools::saveConfigValue(Helper\Constants::CONFIG_PATH_SETTINGS, serialize($data));

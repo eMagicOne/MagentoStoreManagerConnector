@@ -23,6 +23,8 @@ namespace Emagicone\Bridgeconnector\Helper;
  */
 class BridgeCommon
 {
+    /** @var $shop_cart MagentoOverrider */
+    private $shop_cart;
     private $backup_file_ext = 'sql';
     private $br_errors;
     private $bridge_options;
@@ -36,7 +38,6 @@ class BridgeCommon
     private $db_size = 0; /* Size of all data in database which will be processed */
     private $log_file_reset = false;
     private $db_file_handler;
-    private $shop_cart;
     private $tmp_folder_path;
     private $module_version;
     private $revision;
@@ -80,8 +81,12 @@ class BridgeCommon
     const GET_SQL_FILE_PART                  = 'get_sql_file_part';
     const GET_SQL_FILE_PART_NAME             = 'get_sql_file_part_name';
     const GET_SQL_FILE_NAME_GENERATING       = 'get_sql_file_name_generating';
+    const FILE_NAME_FILE_LIST                = 'em1_bridge_file_list';
+    const FILE_NAME_GET_FILE_LIST_TMP        = 'sm_tmp_get_file_list.txt';
+    const KEY_PROCESS_ID                     = 'process_id';
     const DB_FILE_EXT_COMPRESSION_NO         = '.sql';
     const DB_FILE_EXT_COMPRESSION_YES        = '.gz';
+    const FILE_EXT_TXT                       = '.txt';
     const FILE_NAME_PART_NUMBER_COUNT_DIGITS = 3;
     const NUMERIC                            = 1;
     const ASSOC                              = 0;
@@ -92,37 +97,37 @@ class BridgeCommon
     const DELAY_TO_GENERATE_DUMP             = 10; /* seconds */
 
     /* Section of default values which are stored in database */
-    const DEFAULT_LOGIN              = '1';
-    const DEFAULT_PASSWORD           = '1';
-    const DEFAULT_ALLOW_COMPRESSION  = 1;
-    const DEFAULT_COMPRESS_LEVEL     = 6;      /* 1 - 9 */
-    const DEFAULT_LIMIT_QUERY_SIZE   = 8192;      /* kB */
-    const DEFAULT_PACKAGE_SIZE       = 1024;      /* kB */
-    const DEFAULT_EXCLUDE_DB_TABLES  = '';
-    const DEFAULT_NOTIFICATION_EMAIL = '';
-    const DEFAULT_ALLOWED_IPS        = '';
-    const MIN_COMPRESS_LEVEL         = 1;
-    const MAX_COMPRESS_LEVEL         = 9;
-    const MIN_LIMIT_QUERY_SIZE       = 100;    /* kB */
-    const MAX_LIMIT_QUERY_SIZE       = 100000;    /* kB */
-    const MIN_PACKAGE_SIZE           = 100;    /* kB */
-    const MAX_PACKAGE_SIZE           = 30000;    /* kB */
+    const DEFAULT_LOGIN                      = '1';
+    const DEFAULT_PASSWORD                   = '1';
+    const DEFAULT_ALLOW_COMPRESSION          = 1;
+    const DEFAULT_COMPRESS_LEVEL             = 6;      /* 1 - 9 */
+    const DEFAULT_LIMIT_QUERY_SIZE           = 8192;      /* kB */
+    const DEFAULT_PACKAGE_SIZE               = 1024;      /* kB */
+    const DEFAULT_EXCLUDE_DB_TABLES          = '';
+    const DEFAULT_NOTIFICATION_EMAIL         = '';
+    const DEFAULT_ALLOWED_IPS                = '';
+    const MIN_COMPRESS_LEVEL                 = 1;
+    const MAX_COMPRESS_LEVEL                 = 9;
+    const MIN_LIMIT_QUERY_SIZE               = 100;    /* kB */
+    const MAX_LIMIT_QUERY_SIZE               = 100000;    /* kB */
+    const MIN_PACKAGE_SIZE                   = 100;    /* kB */
+    const MAX_PACKAGE_SIZE                   = 30000;    /* kB */
 
-    /* chunk checksum from the store manager and chunk checksum from the bridge file are different */
-    const POST_ERROR_CHUNK_CHECKSUM_DIF = 21;
+    /* Chunk checksum from the store manager and chunk checksum from the bridge file are different */
+    const POST_ERROR_CHUNK_CHECKSUM_DIF      = 21;
 
-    /* chunk checksums are correct, but some sql code was not executed; has one parameter - an index of sql code
+    /* Chunk checksums are correct, but some sql code was not executed; has one parameter - an index of sql code
     which was not executed */
-    const POST_ERROR_SQL_INDEX = 22;
+    const POST_ERROR_SQL_INDEX               = 22;
 
-    const ERROR_CODE_AUTHENTICATION = 25;
-    const ERROR_CODE_SESSION_KEY    = 26;
-    const ERROR_TEXT_AUTHENTICATION = 'Authentication error';
-    const ERROR_TEXT_SESSION_KEY    = 'Session key error';
+    const ERROR_CODE_AUTHENTICATION          = 25;
+    const ERROR_CODE_SESSION_KEY             = 26;
+    const ERROR_TEXT_AUTHENTICATION          = 'Authentication error';
+    const ERROR_TEXT_SESSION_KEY             = 'Session key error';
 
     /* It is used to retry putting sql when server is temporary unavailable */
-    const MAX_COUNT_ATTEMPT_POST = 3;   /* maximum count of attempts */
-    const DELAY_BETWEEN_POST     = 20;  /* delay between attempts (seconds) */
+    const MAX_COUNT_ATTEMPT_POST             = 3;   /* maximum count of attempts */
+    const DELAY_BETWEEN_POST                 = 20;  /* delay between attempts (seconds) */
 
     /**
      * BridgeCommon constructor.
@@ -244,11 +249,13 @@ class BridgeCommon
             'hash_param_empty' => 'Request parameter "hash" is empty',
             'filename_param_empty' => 'Request parameter "filename" is empty',
             'path_param_empty' => 'Request parameter "path" is empty',
+            'category_param_empty' => 'Request parameter "category" is empty',
             'orderid_param_incorrect' => 'Request parameter "order_id" is incorrect',
             'imageid_param_incorrect' => 'Request parameter "image_id" is incorrect',
             'toimageid_param_incorrect' => 'Request parameter "to_image_id" is incorrect',
             'upload_file_error' => 'Some error occurs uploading file into temporary server folder',
             'delete_file_error' => 'No such file',
+            'zip_archive_not_supported' => 'ZipArchive is supported in php version >= 5.2.0',
             'zip_not_loaded' => 'Zip extension not loaded',
             'cannot_archive_files' => 'Cannot archive files',
         ];
@@ -484,6 +491,7 @@ class BridgeCommon
             'get_cache',
             'clear_cache',
             'get_store_file_archive',
+            'get_payment_and_shipping_methods',
         ];
 
         if (in_array($method, array_keys($renamed_methods))) {
@@ -538,7 +546,7 @@ class BridgeCommon
             return $this->generateError($this->br_errors['open_basedir']);
         }
 
-        // checking temporary directory
+        // Checking temporary directory
         if (!$this->shop_cart->isDirectory($this->tmp_folder_path)
             || !$this->shop_cart->isWritable($this->tmp_folder_path)
         ) {
@@ -895,9 +903,11 @@ class BridgeCommon
             $numeric_column[$field++] = preg_match('/^(\w*int|year)/', $col[1]) ? 1 : 0;
         }
 
-        $from = $this->dump_data_prev && $this->dump_data_prev['table'] == $table
-            ? $this->dump_data_prev['from']
-            : 0;
+        if ($this->dump_data_prev && $this->dump_data_prev['table'] == $table) {
+            $from = $this->dump_data_prev['from'];
+        } else {
+            $from = 0;
+        }
 
         $fields = $field;
         $limit  = $tabsize[$table];
@@ -1013,11 +1023,13 @@ class BridgeCommon
         for ($k = 0; $k < $fields; $k ++) {
             if ($numeric_column[$k]) {
                 $row[$k] = isset($row[$k]) ? $row[$k] : 'NULL';
-            } elseif (isset($row[$k])) {
-                $row[$k] = ' ' . self::QOUTE_CHAR . $this->shop_cart->sanitizeSql($row[$k])
-                    . self::QOUTE_CHAR.' ';
             } else {
-                $row[$k] = 'NULL';
+                if (isset($row[$k])) {
+                    $row[$k] = ' ' . self::QOUTE_CHAR . $this->shop_cart->sanitizeSql($row[$k])
+                        . self::QOUTE_CHAR.' ';
+                } else {
+                    $row[$k] = 'NULL';
+                }
             }
         }
 
@@ -1134,15 +1146,15 @@ class BridgeCommon
             return [];
         }
 
-        $quoted_tbls           = ['^sm_.*$'];
+        $quoted_tables           = ['^sm_.*$'];
         $arr_include_db_tables = explode(';', $this->request_params['include_tables']);
         $count                 = count($arr_include_db_tables);
 
         for ($i = 0; $i < $count; $i++) {
-            $quoted_tbls[] = $this->generateTablePattern($arr_include_db_tables[$i]);
+            $quoted_tables[] = $this->generateTablePattern($arr_include_db_tables[$i]);
         }
 
-        return $quoted_tbls;
+        return $quoted_tables;
     }
 
     private function generateTablePattern($table)
@@ -1410,8 +1422,10 @@ class BridgeCommon
                 foreach ($sql_queries as $query) {
                     $query = trim($query);
 
-                    if (!empty($query) && $ret == '') {
-                        $ret .= $this->importRunQuery($query, $checksum_current);
+                    if (!empty($query)) {
+                        if ($ret == '') {
+                            $ret .= $this->importRunQuery($query, $checksum_current);
+                        }
                     } elseif (empty($query)) {
                         break;
                     }
@@ -1560,7 +1574,18 @@ class BridgeCommon
             return $this->generateError($this->br_errors['category_param_missing']);
         }
 
+        $category = $this->shop_cart->getRequestParam('category');
+        if (empty($category)) {
+            $this->putLog('Error: Category name is empty');
+            return $this->generateError($this->br_errors['category_param_empty']);
+        }
+
         $dir = (string)$this->shop_cart->getRequestParam('category');
+        if (empty($category)) {
+            $this->putLog('Error: Category name is empty');
+            $this->generateError($this->br_errors['category_param_empty']);
+        }
+
         $tmp_dir_info = dir($this->tmp_folder_path);
 
         while (false !== ($entry = $tmp_dir_info->read())) {
@@ -2221,6 +2246,11 @@ class BridgeCommon
         return [$this->responseKeyOutput => $this->shop_cart->clearCache()];
     }
 
+    private function getPaymentAndShippingMethods()
+    {
+        $this->shop_cart->getPaymentAndShippingMethods();
+    }
+
     private function getStoreFileArchive()
     {
         if (!$this->shop_cart->isWritable($this->tmp_folder_path)) {
@@ -2244,7 +2274,12 @@ class BridgeCommon
 
         if ($zipObj->open($file, $this->shop_cart->getZipArchiveCreateValue()) === true) {
             $storeRootDir = $this->shop_cart->getShopRootDir();
-            $this->generateFileArchive($zipObj, $storeRootDir, $this->shop_cart->strLen($storeRootDir), $arrIgnoreDir);
+            $this->generateFileArchive(
+                $zipObj,
+                $storeRootDir,
+                $this->shop_cart->strLen($storeRootDir),
+                $arrIgnoreDir
+            );
             $zipObj->close();
             $result = $this->generateFileData($file, true);
         }

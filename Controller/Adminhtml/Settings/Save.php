@@ -35,7 +35,7 @@ class Save extends \Magento\Backend\App\Action
         $dataToStore = [
             'login' => $settings['login'],
             'password' => $storedSettings['password'] == $settings['password']
-                ? Tools::getDecryptedDataUsingBlockCipher($settings['password'])
+                ? Tools::getDecryptedData($settings['password'])
                 : $settings['password'],
             // trim '/', '\', '.' from begin and end
             'tmp_dir' => '/' . preg_replace('/^[\/|\\\|\.]*|[\/|\\\|\.]*$/', '', $settings['tmp_dir']),
@@ -100,32 +100,42 @@ class Save extends \Magento\Backend\App\Action
     {
         $data = $this->getRequest()->getPostValue();
 
-        /** @var \Magento\Backend\Model\View\Result\Redirect $resultRedirect */
-        $resultRedirect = $this->resultRedirectFactory->create();
+        try {
+            if ($data) {
+                if ($this->isPasswordEncryptionCorrect($data['password'])) {
+                    Tools::saveConfigValue(
+                        Constants::CONFIG_PATH_SETTINGS,
+                        serialize($this->getPreparedSettingsToStore($data))
+                    );
 
-        if ($data) {
-            if ($this->isPasswordEncryptionCorrect($data['password'])) {
-                Tools::saveConfigValue(
-                    Constants::CONFIG_PATH_SETTINGS,
-                    serialize($this->getPreparedSettingsToStore($data))
-                );
+                    $this->messageManager->addSuccess(__('You saved Magento Store Manager Connector module settings'));
+                } else {
+                    $this->messageManager->addWarning(__('Required! Change password to encrypt it in better way!'));
+                    $this->_redirect('*/settings/edit');
+                    return;
+                }
 
-                $this->messageManager->addSuccess(__('You saved Magento Store Manager Connector module settings'));
-            } else {
-                $this->messageManager->addWarning(__('CRequired! Change password to encrypt it in better way!'));
+                $this->_objectManager->get('Magento\Backend\Model\Session')->setFormData(false);
 
-                return $resultRedirect->setPath('*/*/edit');
+                if ($this->getRequest()->getParam('back')) {
+                    $this->_redirect('/');
+                } else {
+                    $this->_redirect('*/settings/edit');
+                }
+                return;
             }
-
-            $this->_objectManager->get('Magento\Backend\Model\Session')->setFormData(false);
-
-            if ($this->getRequest()->getParam('back')) {
-                return $resultRedirect->setPath('*/*/edit');
-            }
-
-            return $resultRedirect->setPath('/');
+        } catch (\Magento\Framework\Model\Exception $e) {
+            $this->messageManager->addError($e->getMessage());
+            $this->_objectManager->get('Magento\Backend\Model\Session')->setFormData();
+        } catch (\RuntimeException $e) {
+            $this->messageManager->addError($e->getMessage());
+            $this->_objectManager->get('Magento\Backend\Model\Session')->setFormData();
+        } catch (\Exception $e) {
+            $this->messageManager->addException($e, __('Something went wrong while saving configuration.'));
+            $this->_objectManager->get('Magento\Backend\Model\Session')->setFormData();
         }
-
-        return $resultRedirect->setPath('/');
+        $this->_redirect('*/settings/edit');
+        return;
     }
 }
+

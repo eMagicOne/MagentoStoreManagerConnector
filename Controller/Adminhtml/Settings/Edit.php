@@ -87,12 +87,12 @@ class Edit extends \Magento\Backend\App\Action
     {
         if (Tools::isLoginPasswordDefault()) {
             $this->messageManager
-                ->addWarning('Default login and password are "1". Change them because of security reasons, please!');
+                ->addWarningMessage('Default login is "user" and password is randomly generated due to security reasons. Change them in order to connect to your store.');
         }
 
         if (!Tools::isPasswordEncryptedUsingBlockCipher()) {
             $this->messageManager
-                ->addWarning('Required! Change password to encrypt it in better way!');
+                ->addWarningMessage('Required! Change password to encrypt it in better way!');
         }
 
         /** @var \Magento\Backend\Model\View\Result\Page $resultPage */
@@ -105,3 +105,4 @@ class Edit extends \Magento\Backend\App\Action
         return $resultPage;
     }
 }
+

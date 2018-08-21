@@ -48,44 +48,10 @@ class MagentoOverrider extends BridgeConnectorCore
         $request,
         ObjectManager $object_manager
     ) {
-        $this->module_name   = $module_name;
-        $this->options_name  = $options_name;
-        $this->request       = $request;
+        $this->module_name = $module_name;
+        $this->options_name = $options_name;
+        $this->request = $request;
         $this->objectManager = $object_manager;
-    }
-
-    private function getImagePath($entity_type, $image_id)
-    {
-        /** @var \Magento\Framework\Filesystem\Directory\Read $mediaDirectory */
-        $mediaDirectory = $this->objectManager->get('Magento\Framework\Filesystem')
-            ->getDirectoryWrite(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
-
-        return $mediaDirectory->getAbsolutePath($this->getImageDir($entity_type)) . $image_id;
-    }
-
-    private function getRequest()
-    {
-        return $this->request;
-    }
-
-    public function getUploadedFileInfo($filename)
-    {
-        $uploaded_file_info = false;
-
-        try {
-            $uploaded_file = $this->objectManager->create(
-                'Magento\MediaStorage\Model\File\Uploader',
-                ['fileId' => $filename]
-            );
-
-            $uploaded_file_info = $uploaded_file->validateFile();
-        } catch (\Exception $e) {
-            $error = $e->getPrevious();
-            $this->error_no = $error->errorInfo[1];
-            $this->error_msg = $error->errorInfo[2];
-        }
-
-        return $uploaded_file_info;
     }
 
     public function isModuleEnabled()
@@ -97,11 +63,7 @@ class MagentoOverrider extends BridgeConnectorCore
     {
         $options = Tools::getConfigValue($this->options_name);
 
-        if ($options) {
-            return $this->unserialize($options);
-        }
-
-        return false;
+        return $options ? $this->unserialize($options) : false;
     }
 
     public function getShopRootDir()
@@ -148,7 +110,7 @@ class MagentoOverrider extends BridgeConnectorCore
 
         try {
             $result = [];
-            $query  = Tools::getResource()->getConnection()->query($sql);
+            $query = Tools::getResource()->getConnection()->query($sql);
 
             if ($query) {
                 while ($row = $query->fetch()) {
@@ -165,8 +127,13 @@ class MagentoOverrider extends BridgeConnectorCore
             }
         } catch (\Exception $e) {
             $error = $e->getPrevious();
-            $this->error_no = $error->errorInfo[1];
-            $this->error_msg = $error->errorInfo[2];
+            if (!empty($error) && version_compare(phpversion(), '7.0', '>=')) {
+                $this->error_no = $error->getCode();
+                $this->error_msg = $error->getMessage();
+            } elseif (!empty($error)) {
+                $this->error_no = $error->errorInfo[1];
+                $this->error_msg = $error->errorInfo[2];
+            }
 
             return false;
         }
@@ -181,8 +148,13 @@ class MagentoOverrider extends BridgeConnectorCore
         try {
             Tools::getResource()->getConnection()->rawQuery($sql);
         } catch (\Exception $e) {
-            $this->error_no = $e->errorInfo[1];
-            $this->error_msg = $e->errorInfo[2];
+            if (!empty($error) && version_compare(phpversion(), '7.0', '>=')) {
+                $this->error_no = $e->getCode();
+                $this->error_msg = $e->getMessage();
+            } elseif (!empty($error)) {
+                $this->error_no = $e->errorInfo[1];
+                $this->error_msg = $e->errorInfo[2];
+            }
             $result = false;
         }
 
@@ -198,6 +170,11 @@ class MagentoOverrider extends BridgeConnectorCore
     public function issetRequestParam($param)
     {
         return null !== $this->getRequest()->getParam($param);
+    }
+
+    private function getRequest()
+    {
+        return $this->request;
     }
 
     public function getRequestParam($param)
@@ -244,11 +221,20 @@ class MagentoOverrider extends BridgeConnectorCore
         return $this->getImagePath($entity_type, $image_id);
     }
 
+    private function getImagePath($entity_type, $image_id)
+    {
+        /** @var \Magento\Framework\Filesystem\Directory\Read $mediaDirectory */
+        $mediaDirectory = $this->objectManager->get('Magento\Framework\Filesystem')
+            ->getDirectoryWrite(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
+
+        return $mediaDirectory->getAbsolutePath($this->getImageDir($entity_type)) . $image_id;
+    }
+
     public function setImage($entity_type, $image_id, $img, $type)
     {
-        $result   = false;
+        $result = false;
         $img_file = $this->getImage($entity_type, $image_id);
-        $dirpath  = $this->getParentDirectory($img_file);
+        $dirpath = $this->getParentDirectory($img_file);
 
         if (!$this->fileExists($dirpath)) {
             $this->createDirectory($dirpath, 0777);
@@ -257,6 +243,9 @@ class MagentoOverrider extends BridgeConnectorCore
         if ($this->fileExists($dirpath)) {
             if ($type == self::IMAGE_URL) {
                 $result = $this->filePutContents($img_file, $this->fileGetContents($img));
+                if (!$result) {
+                    $this->filePutContents($img_file, $this->fileGetCurlContents($img));
+                }
             } else {
                 $result = $this->moveUploadedFile($img, $dirpath);
             }
@@ -265,12 +254,12 @@ class MagentoOverrider extends BridgeConnectorCore
         if ($result) {
             $response = $this->jsonEncode([
                 self::CODE_RESPONSE => self::SUCCESSFUL,
-                self::KEY_MESSAGE   => 'File was successfully uploaded',
+                self::KEY_MESSAGE => 'File was successfully uploaded',
             ]);
         } else {
             $response = $this->jsonEncode([
                 self::CODE_RESPONSE => self::ERROR_CODE_COMMON,
-                self::KEY_MESSAGE   => 'File was not uploaded',
+                self::KEY_MESSAGE => 'File was not uploaded',
             ]);
         }
 
@@ -287,13 +276,13 @@ class MagentoOverrider extends BridgeConnectorCore
         if ($this->fileExists($filepath) && $this->unlink($filepath)) {
             $result = $this->jsonEncode([
                 self::CODE_RESPONSE => self::SUCCESSFUL,
-                self::KEY_MESSAGE   => 'File was deleted from server successfully',
+                self::KEY_MESSAGE => 'File was deleted from server successfully',
             ]);
         } else {
             $result = $this->jsonEncode(
                 [
                     self::CODE_RESPONSE => self::ERROR_CODE_COMMON,
-                    self::KEY_MESSAGE   => 'File was not deleted from server',
+                    self::KEY_MESSAGE => 'File was not deleted from server',
                 ]
             );
         }
@@ -308,13 +297,13 @@ class MagentoOverrider extends BridgeConnectorCore
 
     public function getFile($folder, $filename)
     {
-        return $this->getShopRootDir().'/'.$folder.'/'.$filename;
+        return $this->getShopRootDir() . '/' . $folder . '/' . $filename;
     }
 
     public function setFile($folder, $filename, $file)
     {
         $destinationPath = $this->getShopRootDir() . "/$folder";
-        $result          = $this->createDirectory($destinationPath, 0777);
+        $result = $this->createDirectory($destinationPath, 0777);
 
         if ($result) {
             $result = $this->moveUploadedFile($file, $destinationPath);
@@ -323,12 +312,12 @@ class MagentoOverrider extends BridgeConnectorCore
         if ($result) {
             $response = $this->jsonEncode([
                 self::CODE_RESPONSE => self::SUCCESSFUL,
-                self::KEY_MESSAGE   => 'File was successfully uploaded',
+                self::KEY_MESSAGE => 'File was successfully uploaded',
             ]);
         } else {
             $response = $this->jsonEncode([
                 self::CODE_RESPONSE => self::ERROR_CODE_COMMON,
-                self::KEY_MESSAGE   => 'File was not uploaded',
+                self::KEY_MESSAGE => 'File was not uploaded',
             ]);
         }
 
@@ -358,6 +347,31 @@ class MagentoOverrider extends BridgeConnectorCore
         return $path;
     }
 
+    public function getUploadedFileInfo($filename)
+    {
+        $uploaded_file_info = false;
+
+        try {
+            $uploaded_file = $this->objectManager->create(
+                'Magento\MediaStorage\Model\File\Uploader',
+                ['fileId' => $filename]
+            );
+
+            $uploaded_file_info = $uploaded_file->validateFile();
+        } catch (\Exception $e) {
+            $error = $e->getPrevious();
+            if (!empty($error) && version_compare(phpversion(), '7.0', '>=')) {
+                $this->error_no = $error->getCode();
+                $this->error_msg = $error->getMessage();
+            } elseif (!empty($error)) {
+                $this->error_no = $error->errorInfo[1];
+                $this->error_msg = $error->errorInfo[2];
+            }
+        }
+
+        return $uploaded_file_info;
+    }
+
     public function strLen($str)
     {
         return strlen($str);
@@ -365,11 +379,7 @@ class MagentoOverrider extends BridgeConnectorCore
 
     public function subStr($str, $start, $length = false)
     {
-        if ($length) {
-            return substr($str, $start, $length);
-        }
-
-        return substr($str, $start);
+        return $length ? substr($str, $start, $length) : substr($str, $start);
     }
 
     public function strToLower($str)
@@ -395,6 +405,16 @@ class MagentoOverrider extends BridgeConnectorCore
     public function fileGetContents($file)
     {
         return Tools::getFile()->fileGetContents($file);
+    }
+
+    public function fileGetCurlContents($url)
+    {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        $data = curl_exec($ch);
+        curl_close($ch);
+        return $data;
     }
 
     public function filePutContents($path, $content, $mode = null)
@@ -445,6 +465,30 @@ class MagentoOverrider extends BridgeConnectorCore
     public function stat($path)
     {
         return Tools::getFile()->stat($path);
+    }
+
+    public function search($path, $pattern = '*', $onlyDir = false)
+    {
+        $data = Tools::getFile()->search($pattern, $path);
+
+        if ($onlyDir) {
+            $dirs = [];
+
+            foreach ($data as $item) {
+                if ($this->isDirectory($item)) {
+                    $dirs[] = $item;
+                }
+            }
+
+            return $dirs;
+        }
+
+        return $data;
+    }
+
+    public function readDirectory($path)
+    {
+        return Tools::getFile()->readDirectory($path);
     }
 
     public function filemtime($path)
@@ -510,30 +554,6 @@ class MagentoOverrider extends BridgeConnectorCore
     public function moveUploadedFile($filename, $destinationFolder, $newFileName = null)
     {
         return Tools::getUploader($filename)->save($destinationFolder, $newFileName);
-    }
-
-    public function search($path, $pattern = '*', $onlyDir = false)
-    {
-        $data = Tools::getFile()->search($pattern, $path);
-
-        if ($onlyDir) {
-            $dirs = [];
-
-            foreach ($data as $item) {
-                if ($this->isDirectory($item)) {
-                    $dirs[] = $item;
-                }
-            }
-
-            return $dirs;
-        }
-
-        return $data;
-    }
-
-    public function readDirectory($path)
-    {
-        return Tools::getFile()->readDirectory($path);
     }
 
     public function createDirectory($path, $permissions)
@@ -638,7 +658,7 @@ class MagentoOverrider extends BridgeConnectorCore
         }
 
         // Generate new session key and store it in database
-        $key  = hash('sha256', $hash . $timestamp);
+        $key = hash('sha256', $hash . $timestamp);
         $date = date('Y-m-d H:i:s', $timestamp);
         $this->objectManager->create('Emagicone\Bridgeconnector\Model\SessionKey')
             ->setData(['session_key' => $key, 'date_added' => $date, 'last_activity' => $date])
@@ -667,8 +687,8 @@ class MagentoOverrider extends BridgeConnectorCore
 
     public function clearOldData()
     {
-        $timestamp  = time();
-        $date       = date('Y-m-d H:i:s', ($timestamp - Constants::MAX_KEY_LIFETIME));
+        $timestamp = time();
+        $date = date('Y-m-d H:i:s', ($timestamp - Constants::MAX_KEY_LIFETIME));
 
         // Delete old session keys
         $this->objectManager->create('Emagicone\Bridgeconnector\Model\SessionKey')
@@ -686,7 +706,7 @@ class MagentoOverrider extends BridgeConnectorCore
     public function checkDataChanges($tablesArr = [])
     {
         $arr_result = [];
-        $count      = count($tablesArr);
+        $count = count($tablesArr);
 
         for ($i = 0; $i < $count; $i++) {
             $table = trim($tablesArr[$i]);
@@ -697,7 +717,7 @@ class MagentoOverrider extends BridgeConnectorCore
 
             try {
                 $arr_result[$table] = $this->objectManager->get('Magento\ImportExport\Model\ResourceModel\Helper')
-                    ->getNextAutoincrement($table) - 1;
+                        ->getNextAutoincrement($table) - 1;
             } catch (\Exception $e) {
                 $arr_result[$table] = '';
             }
@@ -707,7 +727,7 @@ class MagentoOverrider extends BridgeConnectorCore
             return $this->jsonEncode(
                 [
                     self::CODE_RESPONSE => self::ERROR_CODE_COMMON,
-                    self::KEY_MESSAGE   => Tools::jsonEncode($arr_result)
+                    self::KEY_MESSAGE => Tools::jsonEncode($arr_result)
                 ]
             );
         }
@@ -715,7 +735,7 @@ class MagentoOverrider extends BridgeConnectorCore
         return $this->jsonEncode(
             [
                 self::CODE_RESPONSE => self::SUCCESSFUL,
-                self::KEY_MESSAGE   => Tools::jsonEncode($arr_result)
+                self::KEY_MESSAGE => Tools::jsonEncode($arr_result)
             ]
         );
     }
@@ -726,8 +746,8 @@ class MagentoOverrider extends BridgeConnectorCore
             return false;
         }
 
-        $max_order_id       = 0;
-        $order_info         = [];
+        $max_order_id = 0;
+        $order_info = [];
         $collection_factory = $this->objectManager->get('\Magento\Sales\Model\ResourceModel\Order\CollectionFactory');
 
         // Get max order id
@@ -746,24 +766,24 @@ class MagentoOverrider extends BridgeConnectorCore
         $count_new_orders = (int)$collection->getSize();
         foreach ($collection as $order) {
             $order_info[] = [
-                'order_id'            => $order->getEntityId(),
-                'customer_id'         => $order->getCustomerId(),
-                'grand_total'         => $order->getGrandTotal(),
-                'total_paid'          => $order->getTotalPaid(),
+                'order_id' => $order->getEntityId(),
+                'customer_id' => $order->getCustomerId(),
+                'grand_total' => $order->getGrandTotal(),
+                'total_paid' => $order->getTotalPaid(),
                 'order_currency_code' => $order->getOrderCurrencyCode(),
-                'firstname'           => $order->getCustomerFirstname(),
-                'lastname'            => $order->getCustomerLastname()
+                'firstname' => $order->getCustomerFirstname(),
+                'lastname' => $order->getCustomerLastname()
             ];
         }
 
         return $this->jsonEncode(
             [
                 self::CODE_RESPONSE => self::SUCCESSFUL,
-                self::KEY_MESSAGE   => Tools::jsonEncode(
+                self::KEY_MESSAGE => Tools::jsonEncode(
                     [
                         'CountNewOrder' => $count_new_orders,
-                        'MaxOrderId'    => $max_order_id,
-                        'OrderInfo'     => $order_info
+                        'MaxOrderId' => $max_order_id,
+                        'OrderInfo' => $order_info
                     ]
                 )
             ]
@@ -782,7 +802,7 @@ class MagentoOverrider extends BridgeConnectorCore
             return $this->jsonEncode(
                 [
                     self::CODE_RESPONSE => self::ERROR_CODE_COMMON,
-                    self::KEY_MESSAGE   => 'Cannot get cache types'
+                    self::KEY_MESSAGE => 'Cannot get cache types'
                 ]
             );
         }
@@ -790,7 +810,7 @@ class MagentoOverrider extends BridgeConnectorCore
         return $this->jsonEncode(
             [
                 self::CODE_RESPONSE => self::SUCCESSFUL,
-                self::KEY_MESSAGE   => Tools::jsonEncode($caches)
+                self::KEY_MESSAGE => Tools::jsonEncode($caches)
             ]
         );
     }
@@ -803,7 +823,7 @@ class MagentoOverrider extends BridgeConnectorCore
             return $this->jsonEncode(
                 [
                     self::CODE_RESPONSE => self::ERROR_CODE_COMMON,
-                    self::KEY_MESSAGE   => 'Incorrect cache type'
+                    self::KEY_MESSAGE => 'Incorrect cache type'
                 ]
             );
         }
@@ -828,5 +848,10 @@ class MagentoOverrider extends BridgeConnectorCore
     public function getZipArchiveCreateValue()
     {
         return \ZipArchive::CREATE;
+    }
+
+    public function getPaymentAndShippingMethods()
+    {
+        return false;
     }
 }
