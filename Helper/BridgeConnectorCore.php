@@ -53,7 +53,7 @@ abstract class BridgeConnectorCore
     abstract public function getDbPassword();
     abstract public function getDbPrefix();
     abstract public function getSqlResults($sql);
-    abstract public function execSql($sql, $reconnect);
+    abstract public function execSql($sql);
     abstract public function sanitizeSql($sql);
     abstract public function issetRequestParam($param);
     abstract public function getRequestParam($param);
@@ -67,7 +67,7 @@ abstract class BridgeConnectorCore
     abstract public function deleteFile($filepath);
     abstract public function copyImage($entity_type, $from_image_id, $to_image_id);
     abstract public function getFile($folder, $filename);
-    abstract public function setFile($folder, $filename, $file);
+    abstract public function setFile($folder, $file);
     abstract public function checkDataChanges($tablesArr);
     abstract public function getNewOrders($order_id);
     abstract public function clearCache();
@@ -108,7 +108,6 @@ abstract class BridgeConnectorCore
     abstract public function getZipArchiveInstance();
     abstract public function getZipArchiveCreateValue();
     abstract public function getPaymentAndShippingMethods();
-
 
     public function getCodeResponse()
     {

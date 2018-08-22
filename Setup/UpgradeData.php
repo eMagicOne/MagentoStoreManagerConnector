@@ -1,58 +1,38 @@
 <?php
 /**
- * mc-magento2 Magento Component
+ *    This file is part of Magento Store Manager Connector.
  *
- * @category Ebizmarts
- * @package mc-magento2
- * @author Ebizmarts Team <info@ebizmarts.com>
- * @copyright Ebizmarts (http://ebizmarts.com)
- * @license     http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
- * @date: 10/31/16 3:28 PM
- * @file: UpgradeData.php
+ *   Magento Store Manager Connector is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   Magento Store Manager Connector is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with Magento Store Manager Connector.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 namespace Emagicone\Bridgeconnector\Setup;
 
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\ModuleDataSetupInterface;
 use Magento\Framework\Setup\UpgradeDataInterface;
-use Magento\Framework\App\ResourceConnection;
-use Magento\Framework\App\DeploymentConfig;
 use Emagicone\Bridgeconnector\Helper\Tools;
 use Emagicone\Bridgeconnector\Helper\Constants;
 
 class UpgradeData implements UpgradeDataInterface
 {
     /**
-     * @var ResourceConnection
-     */
-    protected $_resource;
-    /**
-     * @var DeploymentConfig
-     */
-    protected $_deploymentConfig;
-
-    /**
-     * UpgradeData constructor.
-     * @param ResourceConnection $resource
-     * @param DeploymentConfig $deploymentConfig
-     */
-    public function __construct(
-        ResourceConnection $resource,
-        DeploymentConfig $deploymentConfig
-    )
-    {
-        $this->_resource = $resource;
-        $this->_deploymentConfig = $deploymentConfig;
-    }
-
-    /**
      * @param ModuleDataSetupInterface $setup
      * @param ModuleContextInterface $context
      */
     public function upgrade(ModuleDataSetupInterface $setup, ModuleContextInterface $context)
     {
-        if (version_compare($context->getVersion(), '1.0.4') < 0)
-        {
+        if (version_compare($context->getVersion(), '1.0.4') < 0) {
             $previousBridgeData = $this->getBridgeOptions($setup);
             Tools::saveConfigValue(Constants::CONFIG_PATH_SETTINGS, $previousBridgeData);
 

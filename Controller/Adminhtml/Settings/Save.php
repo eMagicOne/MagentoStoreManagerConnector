@@ -20,7 +20,6 @@ namespace Emagicone\Bridgeconnector\Controller\Adminhtml\Settings;
 
 use Emagicone\Bridgeconnector\Helper\Constants;
 use Emagicone\Bridgeconnector\Helper\Tools;
-use Magento\Backend\App\Action;
 
 /**
  * Class Save
@@ -94,7 +93,7 @@ class Save extends \Magento\Backend\App\Action
     /**
      * Save action
      *
-     * @return \Magento\Framework\Controller\ResultInterface
+     * @return \Magento\Framework\App\ResponseInterface|\Magento\Framework\Controller\ResultInterface
      */
     public function execute()
     {
@@ -138,4 +137,3 @@ class Save extends \Magento\Backend\App\Action
         return;
     }
 }
-

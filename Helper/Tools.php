@@ -72,7 +72,7 @@ class Tools
 
     public static function getEncryptedData($data)
     {
-        if (version_compare(phpversion(), '7.1','<')) {
+        if (version_compare(phpversion(), '7.1', '<')) {
             return self::getMcryptBlockCipher()->encrypt($data);
         }
 
@@ -81,7 +81,7 @@ class Tools
 
     public static function getDecryptedData($data)
     {
-        if (version_compare(phpversion(), '7.1','<')) {
+        if (version_compare(phpversion(), '7.1', '<')) {
             return self::getMcryptBlockCipher()->decrypt($data);
         }
 
@@ -93,8 +93,7 @@ class Tools
         $data = self::getStoredSettings();
 
         return Constants::DEFAULT_LOGIN == $data['login']
-            && (strpos(self::getDecryptedData($data['password']), Constants::EMONE) !== false) ? true : false;
-        //todo if needed will add check length
+            && Constants::DEFAULT_PASSWORD == self::getDecryptedData($data['password']);
     }
 
     public static function isPasswordEncryptedUsingBlockCipher($password = false)

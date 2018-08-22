@@ -1529,7 +1529,7 @@ class BridgeCommon
 
         for ($i = 0; $i < self::MAX_COUNT_ATTEMPT_POST; $i++) {
             self::sleepFor(self::DELAY_BETWEEN_POST);
-            $result = $this->shop_cart->execSql($query, true);
+            $result = $this->shop_cart->execSql($query);
 
             if ($result || ($this->shop_cart->error_no != 2006 && $this->shop_cart->error_no != 1317)) {
                 break;
@@ -2210,29 +2210,18 @@ class BridgeCommon
             return $this->generateError($this->br_errors['entitytype_param_missing']);
         }
 
-        if (!$this->shop_cart->issetRequestParam('filename')) {
-            return $this->generateError($this->br_errors['filename_param_missing']);
-        }
-
         $entity_type = (string)$this->shop_cart->getRequestParam('entity_type');
-        $filename    = (string)$this->shop_cart->getRequestParam('filename');
-
         if (empty($entity_type)) {
             return $this->generateError($this->br_errors['entitytype_param_empty']);
         }
 
-        if (empty($filename)) {
-            return $this->generateError($this->br_errors['filename_param_empty']);
-        }
-
         $uploaded_file = $this->shop_cart->getUploadedFileInfo(self::UPLOAD_FILE_NAME);
-
         if ($uploaded_file['error']) {
             return $this->generateError($this->br_errors['upload_file_error']);
         }
 
         return [
-            $this->responseKeyOutput => $this->shop_cart->setFile($entity_type, $filename, self::UPLOAD_FILE_NAME)
+            $this->responseKeyOutput => $this->shop_cart->setFile($entity_type, self::UPLOAD_FILE_NAME)
         ];
     }
 

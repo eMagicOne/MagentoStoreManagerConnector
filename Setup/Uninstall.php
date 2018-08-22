@@ -35,15 +35,14 @@ class Uninstall implements UninstallInterface
     {
         $setup->startSetup();
         $setupConnection = $setup->getConnection();
-
         Tools::deleteConfigValue(Constants::CONFIG_PATH_SETTINGS);
-		
-		$table = $setup->getTable(Constants::TABLE_SESSION_KEYS);
+
+        $table = $setup->getTable(Constants::TABLE_SESSION_KEYS);
         if ($setupConnection->isTableExists($table)) {
             $setupConnection->dropTable($table);
         }
 
-		$table = $setup->getTable(Constants::TABLE_FAILED_LOGIN);
+        $table = $setup->getTable(Constants::TABLE_FAILED_LOGIN);
         if ($setupConnection->isTableExists($table)) {
             $setupConnection->dropTable($table);
         }

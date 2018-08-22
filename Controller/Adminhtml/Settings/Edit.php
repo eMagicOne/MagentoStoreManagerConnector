@@ -67,7 +67,6 @@ class Edit extends \Magento\Backend\App\Action
      */
     public function _initAction()
     {
-        // load layout, set active menu and breadcrumbs
         /** @var \Magento\Backend\Model\View\Result\Page $resultPage */
         $resultPage = $this->resultPageFactory->create();
         $resultPage->setActiveMenu('Emagicone_Bridgeconnector::bridgeconnector_settings')
@@ -87,7 +86,7 @@ class Edit extends \Magento\Backend\App\Action
     {
         if (Tools::isLoginPasswordDefault()) {
             $this->messageManager
-                ->addWarningMessage('Default login is "user" and password is randomly generated due to security reasons. Change them in order to connect to your store.');
+                ->addWarning('Default login and password are "1". Change them because of security reasons, please!');
         }
 
         if (!Tools::isPasswordEncryptedUsingBlockCipher()) {
@@ -105,4 +104,3 @@ class Edit extends \Magento\Backend\App\Action
         return $resultPage;
     }
 }
-

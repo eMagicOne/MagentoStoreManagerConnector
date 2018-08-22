@@ -20,7 +20,6 @@ namespace Emagicone\Bridgeconnector\Controller\Index;
 
 use Emagicone\Bridgeconnector\Helper\Constants;
 use Magento\Framework\App\ResponseInterface;
-use Magento\Framework\App\Response\Http;
 use Magento\Framework\App\Action\Action;
 
 /**

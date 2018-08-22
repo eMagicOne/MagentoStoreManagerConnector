@@ -33,7 +33,7 @@ class MagentoOverrider extends BridgeConnectorCore
     /**
      * @var ObjectManager
      */
-    private $objectManager;
+    private $_objectManager;
 
     /**
      * MagentoOverrider constructor.
@@ -51,12 +51,12 @@ class MagentoOverrider extends BridgeConnectorCore
         $this->module_name = $module_name;
         $this->options_name = $options_name;
         $this->request = $request;
-        $this->objectManager = $object_manager;
+        $this->_objectManager = $object_manager;
     }
 
     public function isModuleEnabled()
     {
-        return $this->objectManager->get('Magento\Framework\Module\Manager')->isOutputEnabled($this->module_name);
+        return $this->_objectManager->get('Magento\Framework\Module\Manager')->isOutputEnabled($this->module_name);
     }
 
     public function getBridgeOptions()
@@ -141,7 +141,7 @@ class MagentoOverrider extends BridgeConnectorCore
         return $ret;
     }
 
-    public function execSql($sql, $reconnect = false)
+    public function execSql($sql)
     {
         $result = true;
 
@@ -194,7 +194,7 @@ class MagentoOverrider extends BridgeConnectorCore
 
     public function runIndexer()
     {
-        $indexers = $this->objectManager->get('Magento\Indexer\Model\Indexer\Collection')->getItems();
+        $indexers = $this->_objectManager->get('Magento\Indexer\Model\Indexer\Collection')->getItems();
         $result = '';
 
         foreach ($indexers as $indexer) {
@@ -209,7 +209,7 @@ class MagentoOverrider extends BridgeConnectorCore
     {
         return Tools::jsonEncode(
             [
-                'cart_version' => $this->objectManager->get('Magento\Framework\App\ProductMetadataInterface')
+                'cart_version' => $this->_objectManager->get('Magento\Framework\App\ProductMetadataInterface')
                     ->getVersion(),
                 'crypt_key' => Tools::getDeploymentConfig()->get(ConfigOptionsListConstants::CONFIG_PATH_CRYPT_KEY)
             ]
@@ -224,7 +224,7 @@ class MagentoOverrider extends BridgeConnectorCore
     private function getImagePath($entity_type, $image_id)
     {
         /** @var \Magento\Framework\Filesystem\Directory\Read $mediaDirectory */
-        $mediaDirectory = $this->objectManager->get('Magento\Framework\Filesystem')
+        $mediaDirectory = $this->_objectManager->get('Magento\Framework\Filesystem')
             ->getDirectoryWrite(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
 
         return $mediaDirectory->getAbsolutePath($this->getImageDir($entity_type)) . $image_id;
@@ -300,7 +300,7 @@ class MagentoOverrider extends BridgeConnectorCore
         return $this->getShopRootDir() . '/' . $folder . '/' . $filename;
     }
 
-    public function setFile($folder, $filename, $file)
+    public function setFile($folder, $file)
     {
         $destinationPath = $this->getShopRootDir() . "/$folder";
         $result = $this->createDirectory($destinationPath, 0777);
@@ -331,7 +331,7 @@ class MagentoOverrider extends BridgeConnectorCore
         switch ($type) {
             case self::PRODUCT:
                 /** @var \Magento\Catalog\Model\Product\Media\Config $config */
-                $config = $this->objectManager->get('Magento\Catalog\Model\Product\Media\Config');
+                $config = $this->_objectManager->get('Magento\Catalog\Model\Product\Media\Config');
                 $path = $config->getBaseMediaPath();
                 break;
             case self::CATEGORY:
@@ -339,7 +339,7 @@ class MagentoOverrider extends BridgeConnectorCore
                 break;
             case self::ATTRIBUTE:
                 /** @var \Magento\Swatches\Helper\Media $swatches_media */
-                $swatches_media = $this->objectManager->get('Magento\Swatches\Helper\Media');
+                $swatches_media = $this->_objectManager->get('Magento\Swatches\Helper\Media');
                 $path = $swatches_media::SWATCH_MEDIA_PATH;
                 break;
         }
@@ -352,7 +352,7 @@ class MagentoOverrider extends BridgeConnectorCore
         $uploaded_file_info = false;
 
         try {
-            $uploaded_file = $this->objectManager->create(
+            $uploaded_file = $this->_objectManager->create(
                 'Magento\MediaStorage\Model\File\Uploader',
                 ['fileId' => $filename]
             );
@@ -530,7 +530,7 @@ class MagentoOverrider extends BridgeConnectorCore
 
     public function gzFileOpen($path, $mode)
     {
-        $file = $this->objectManager->create('Emagicone\Bridgeconnector\Helper\GzFile', ['filePath' => $path]);
+        $file = $this->_objectManager->create('Emagicone\Bridgeconnector\Helper\GzFile', ['filePath' => $path]);
         $file->gzOpen($mode);
 
         return $file;
@@ -573,7 +573,7 @@ class MagentoOverrider extends BridgeConnectorCore
 
     public function getRemoteAddress($ipToLong = false)
     {
-        return $this->objectManager->get('Magento\Framework\HTTP\PhpEnvironment\RemoteAddress')
+        return $this->_objectManager->get('Magento\Framework\HTTP\PhpEnvironment\RemoteAddress')
             ->getRemoteAddress($ipToLong);
     }
 
@@ -598,7 +598,7 @@ class MagentoOverrider extends BridgeConnectorCore
      */
     public function isSessionKeyValid($key)
     {
-        $key = $this->objectManager->create('Emagicone\Bridgeconnector\Model\SessionKey')
+        $key = $this->_objectManager->create('Emagicone\Bridgeconnector\Model\SessionKey')
             ->getCollection()
             ->addFieldToFilter('session_key', $key)
             ->addFieldToFilter('last_activity', ['gt' => date('Y-m-d H:i:s', (time() - Constants::MAX_KEY_LIFETIME))])
@@ -621,12 +621,12 @@ class MagentoOverrider extends BridgeConnectorCore
         $timestamp = time();
 
         // Add failed attempt
-        $this->objectManager->create('Emagicone\Bridgeconnector\Model\FailedLogin')
+        $this->_objectManager->create('Emagicone\Bridgeconnector\Model\FailedLogin')
             ->setData(['ip' => $this->getRemoteAddress(), 'date_added' => date('Y-m-d H:i:s', $timestamp)])
             ->save();
 
         // Select count of failed attempts
-        $collection = $this->objectManager->create('Emagicone\Bridgeconnector\Model\FailedLogin')
+        $collection = $this->_objectManager->create('Emagicone\Bridgeconnector\Model\FailedLogin')
             ->getCollection()
             ->addFieldToFilter('ip', $this->getRemoteAddress())
             ->addFieldToFilter(
@@ -644,7 +644,7 @@ class MagentoOverrider extends BridgeConnectorCore
     public function generateSessionKey($hash)
     {
         $timestamp = time();
-        $key = $this->objectManager->create('Emagicone\Bridgeconnector\Model\SessionKey')
+        $key = $this->_objectManager->create('Emagicone\Bridgeconnector\Model\SessionKey')
             ->getCollection()
             ->addFieldToFilter(
                 'last_activity',
@@ -660,7 +660,7 @@ class MagentoOverrider extends BridgeConnectorCore
         // Generate new session key and store it in database
         $key = hash('sha256', $hash . $timestamp);
         $date = date('Y-m-d H:i:s', $timestamp);
-        $this->objectManager->create('Emagicone\Bridgeconnector\Model\SessionKey')
+        $this->_objectManager->create('Emagicone\Bridgeconnector\Model\SessionKey')
             ->setData(['session_key' => $key, 'date_added' => $date, 'last_activity' => $date])
             ->save();
 
@@ -677,7 +677,7 @@ class MagentoOverrider extends BridgeConnectorCore
             return false;
         }
 
-        $this->objectManager->create('Emagicone\Bridgeconnector\Model\SessionKey')
+        $this->_objectManager->create('Emagicone\Bridgeconnector\Model\SessionKey')
             ->getCollection()
             ->addFieldToFilter('session_key', ['eq' => $key])
             ->walk('delete');
@@ -691,13 +691,13 @@ class MagentoOverrider extends BridgeConnectorCore
         $date = date('Y-m-d H:i:s', ($timestamp - Constants::MAX_KEY_LIFETIME));
 
         // Delete old session keys
-        $this->objectManager->create('Emagicone\Bridgeconnector\Model\SessionKey')
+        $this->_objectManager->create('Emagicone\Bridgeconnector\Model\SessionKey')
             ->getCollection()
             ->addFieldToFilter('last_activity', ['lt' => $date])
             ->walk('delete');
 
         // Delete old failed login
-        $this->objectManager->create('Emagicone\Bridgeconnector\Model\FailedLogin')
+        $this->_objectManager->create('Emagicone\Bridgeconnector\Model\FailedLogin')
             ->getCollection()
             ->addFieldToFilter('date_added', ['lt' => $date])
             ->walk('delete');
@@ -716,7 +716,7 @@ class MagentoOverrider extends BridgeConnectorCore
             }
 
             try {
-                $arr_result[$table] = $this->objectManager->get('Magento\ImportExport\Model\ResourceModel\Helper')
+                $arr_result[$table] = $this->_objectManager->get('Magento\ImportExport\Model\ResourceModel\Helper')
                         ->getNextAutoincrement($table) - 1;
             } catch (\Exception $e) {
                 $arr_result[$table] = '';
@@ -748,7 +748,7 @@ class MagentoOverrider extends BridgeConnectorCore
 
         $max_order_id = 0;
         $order_info = [];
-        $collection_factory = $this->objectManager->get('\Magento\Sales\Model\ResourceModel\Order\CollectionFactory');
+        $collection_factory = $this->_objectManager->get('\Magento\Sales\Model\ResourceModel\Order\CollectionFactory');
 
         // Get max order id
         $collection = $collection_factory->create();
@@ -842,7 +842,7 @@ class MagentoOverrider extends BridgeConnectorCore
 
     public function getZipArchiveInstance()
     {
-        return $this->objectManager->create('\ZipArchive');
+        return $this->_objectManager->create('\ZipArchive');
     }
 
     public function getZipArchiveCreateValue()
