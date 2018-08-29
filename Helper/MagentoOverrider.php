@@ -247,7 +247,8 @@ class MagentoOverrider extends BridgeConnectorCore
                     $this->filePutContents($img_file, $this->fileGetCurlContents($img));
                 }
             } else {
-                $result = $this->moveUploadedFile($img, $dirpath);
+                $newFileName = basename($image_id);
+                $result = $this->moveUploadedFile($img, $dirpath, $newFileName);
             }
         }
 

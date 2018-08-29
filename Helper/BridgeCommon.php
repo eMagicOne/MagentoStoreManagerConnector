@@ -56,7 +56,7 @@ class BridgeCommon
     private $responseKeyHeaders;
     private $maxKeyLifetime;
 
-    const BRIDGE_COMMON_VERSION              = 4;
+    const BRIDGE_COMMON_VERSION              = 5;
     const TEST_POST_STRING                   = '////AjfiIkllsomsdjUNNLkdsuinmJNFIkmsiidmfmiOKSFKMI/////';
     const TEST_OK                            = '<span style="color: #008000;">Ok</span>';
     const TEST_FAIL                          = '<span style="color: #ff0000;">Fail</span>';
@@ -2196,7 +2196,7 @@ class BridgeCommon
         if ($file_path && $this->shop_cart->fileExists($file_path)) {
             $file_size = $this->shop_cart->fileSize($file_path);
             $output    = $this->shop_cart->fileRead($this->shop_cart->fileOpen($file_path, 'r'), $file_size);
-            $headers   = ['name' => 'Content-Length', 'value' => $file_size];
+            $headers   = [['name' => 'Content-Length', 'value' => $file_size]];
         } else {
             $output = 'File is missing';
         }
