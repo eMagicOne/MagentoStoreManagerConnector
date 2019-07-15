@@ -37,7 +37,6 @@ class Tools
     private static $cache_list;
     private static $file;
     private static $escaper;
-    private static $mcrypt;
     private static $mcrypt_block_cipher;
 
     private static function getBase64($value, $alreadyEncoded)

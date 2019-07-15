@@ -32,23 +32,20 @@ class UpgradeData implements UpgradeDataInterface
      */
     public function upgrade(ModuleDataSetupInterface $setup, ModuleContextInterface $context)
     {
-        if (version_compare($context->getVersion(), '1.0.4') < 0) {
-            $previousBridgeData = $this->getBridgeOptions($setup);
-            Tools::saveConfigValue(Constants::CONFIG_PATH_SETTINGS, $previousBridgeData);
-
-            // To save in cache
-            Tools::getConfigValue(Constants::CONFIG_PATH_SETTINGS);
+        $options = Tools::getConfigValue(Constants::OPTIONS_NAME);
+        if ($options && version_compare($context->getVersion(), '1.0.4') < 0) {
+            $this->fillWithPreviousData($setup, $options);
+        } elseif (!$options) {
+            $this->fillWithDefaultData($setup);
         }
+
+         // To save in cache
+         Tools::getConfigValue(Constants::CONFIG_PATH_SETTINGS);
+
     }
 
-    private function getBridgeOptions($setup)
+    private function fillWithPreviousData($setup, $options)
     {
-        $options = Tools::getConfigValue(Constants::OPTIONS_NAME);
-
-        if (!$options) {
-            return false;
-        }
-
         $tmpDir = Tools::getObjectManager()->get('Magento\Framework\Module\Dir\Reader')
                 ->getModuleDir('', 'Emagicone_Bridgeconnector') . '/tmp';
         $tmpDir = str_replace(str_replace('\\', '/', BP), '', $tmpDir);
@@ -117,6 +114,35 @@ class UpgradeData implements UpgradeDataInterface
             $bridgeOptions['compress_level'] = (int)$bridgeOptions['compress_level'];
         }
 
-        return serialize($bridgeOptions);
+        Tools::saveConfigValue(Constants::CONFIG_PATH_SETTINGS, serialize($bridgeOptions));
+    }
+
+    private function fillWithDefaultData($setup)
+    {
+        $tmpDir = Tools::getObjectManager()->get('Magento\Framework\Module\Dir\Reader')
+                ->getModuleDir('', 'Emagicone_Bridgeconnector') . '/tmp';
+        $tmpDir = str_replace(str_replace('\\', '/', BP), '', $tmpDir);
+
+        $tables = explode(';', Constants::EXCLUDE_DB_TABLES_DEFAULT);
+        $excludedTables = [];
+        foreach ($tables as $table) {
+            $excludedTables[] = $setup->getTable($table);
+        }
+
+        $data = [
+            'login'                 => Constants::DEFAULT_LOGIN,
+            'password'              => Tools::getEncryptedData(Constants::DEFAULT_PASSWORD),
+            'bridge_hash'           => md5(Constants::DEFAULT_LOGIN . Constants::DEFAULT_PASSWORD),
+            'tmp_dir'               => $tmpDir,
+            'allow_compression'     => Constants::DEFAULT_ALLOW_COMPRESSION,
+            'compress_level'        => Constants::DEFAULT_COMPRESS_LEVEL,
+            'limit_query_size'      => Constants::DEFAULT_LIMIT_QUERY_SIZE,
+            'package_size'          => Constants::DEFAULT_PACKAGE_SIZE,
+            'exclude_db_tables'     => implode(';', $excludedTables),
+            'allowed_ips'           => Constants::DEFAULT_ALLOWED_IPS,
+            'last_clear_date'       => time(),
+        ];
+
+        Tools::saveConfigValue(Constants::CONFIG_PATH_SETTINGS, serialize($data));
     }
 }
