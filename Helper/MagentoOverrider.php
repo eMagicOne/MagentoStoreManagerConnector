@@ -197,9 +197,14 @@ class MagentoOverrider extends BridgeConnectorCore
         $indexers = $this->_objectManager->get('Magento\Indexer\Model\Indexer\Collection')->getItems();
         $result = '';
 
+        /** @var Magento\Framework\Indexer\IndexerInterface $indexer */
         foreach ($indexers as $indexer) {
             $indexer->reindexAll();
-            $result .= $indexer->getTitle()->getText() . ' index was rebuilt successfully<br>';
+            $indexerName = (method_exists($indexer->getTitle(),'getText')
+                ? $indexer->getTitle()->{'getText'}()
+                : $indexer->getTitle()
+            );
+            $result .= $indexerName . ' index was rebuilt successfully<br>';
         }
 
         return $result;
@@ -465,7 +470,7 @@ class MagentoOverrider extends BridgeConnectorCore
 
     public function stat($path)
     {
-        return Tools::getFile()->stat($path);
+        return @Tools::getFile()->stat($path);
     }
 
     public function search($path, $pattern = '*', $onlyDir = false)

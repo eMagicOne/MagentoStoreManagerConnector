@@ -33,9 +33,10 @@ class BridgeCommon
     private $count_sql_exec_prev = 0;
     private $request_params;
     private $db_tables = [];
-    private $handled_tables = []; /* Array of processed tables */
-    private $table_sizes = []; /* Information about size of each table */
-    private $db_size = 0; /* Size of all data in database which will be processed */
+    private $db_views = [];
+    private $handled_tables = [];           /* Array of processed tables */
+    private $table_sizes = [];              /* Information about size of each table */
+    private $db_size = 0;                   /* Size of all data in database which will be processed */
     private $log_file_reset = false;
     private $db_file_handler;
     private $tmp_folder_path;
@@ -56,7 +57,6 @@ class BridgeCommon
     private $responseKeyHeaders;
     private $maxKeyLifetime;
 
-    const BRIDGE_COMMON_VERSION              = 5;
     const TEST_POST_STRING                   = '////AjfiIkllsomsdjUNNLkdsuinmJNFIkmsiidmfmiOKSFKMI/////';
     const TEST_OK                            = '<span style="color: #008000;">Ok</span>';
     const TEST_FAIL                          = '<span style="color: #ff0000;">Fail</span>';
@@ -69,8 +69,6 @@ class BridgeCommon
     const TMP_FILE_PREFIX                    = 'm1bridgetmp_';
     const INTERMEDIATE_FILE_NAME             = 'sm_intermediate.txt';
     const DB_FILE_MAIN                       = 'em1_bridge_db_dump';
-    const DB_FILE_COMPRESSION_NO             = 'em1_bridge_db_dump.sql';
-    const DB_FILE_COMPRESSION_YES            = 'em1_bridge_db_dump.gz';
     const DB_DATA_TMP                        = 'em1_dump_data_tmp.txt';
     const FILE_TMP_GET_SQL                   = 'em1_tmp_get_sql.txt';
     const FILE_TMP_PUT_SQL                   = 'em1_tmp_put_sql.txt';
@@ -91,7 +89,6 @@ class BridgeCommon
     const NUMERIC                            = 1;
     const ASSOC                              = 0;
     const PUT_SQL_ENCODED                    = 'base_64_encoded_';
-    const SESSION_NAME                       = 'emagicone_bridge';
     const UPLOAD_FILE_NAME                   = 'file';
     const FILE_READ_SIZE                     = 102400; /* B */
     const DELAY_TO_GENERATE_DUMP             = 10; /* seconds */
@@ -116,7 +113,7 @@ class BridgeCommon
     /* Chunk checksum from the store manager and chunk checksum from the bridge file are different */
     const POST_ERROR_CHUNK_CHECKSUM_DIF      = 21;
 
-    /* Chunk checksums are correct, but some sql code was not executed; has one parameter - an index of sql code
+    /* Chunk checksum are correct, but some sql code was not executed; has one parameter - an index of sql code
     which was not executed */
     const POST_ERROR_SQL_INDEX               = 22;
 
@@ -179,8 +176,11 @@ class BridgeCommon
             $this->response = $this->generateError($this->br_errors['module_disabled']);
         } else {
             $this->response = $this->checkAuth();
-
             if (!$this->response) {
+                // Uncomment if have some troubles with getting data
+                //
+                // ini_set('max_execution_time', 7200);
+                // ini_set('memory_limit', -1);
                 $this->response = $this->bridgeAction();
             }
         }
@@ -521,7 +521,7 @@ class BridgeCommon
             return $this->generateError($this->br_errors['ip_check']);
         }
 
-        if (!ini_get('date.timezone') || ini_get('date.timezone' == '')) {
+        if (!ini_get('date.timezone') || ini_get('date.timezone') == '') {
             date_default_timezone_set(date_default_timezone_get());
         }
 
@@ -680,19 +680,23 @@ class BridgeCommon
     private function getDumpData()
     {
         $content = false;
-        $file    = $this->tmp_folder_path.'/'.self::DB_DATA_TMP;
-        $file_db = $this->tmp_folder_path.'/'.self::DB_FILE_COMPRESSION_NO;
+        $file    = $this->tmp_folder_path . '/' . self::DB_DATA_TMP;
+        $file_db = $this->tmp_folder_path . '/' . self::DB_FILE_MAIN
+            . $this->getPartNumber($this->dump_file_part_number)
+            . self::DB_FILE_EXT_COMPRESSION_NO;
 
         if ($this->shop_cart->fileExists($file)) {
             if ($this->shop_cart->fileExists($file_db) && (time() - $this->shop_cart->filemtime($file_db)) > 600) {
                 $this->shop_cart->unlink($file_db);
                 return false;
-            } elseif (!$this->shop_cart->fileExists($file_db)) {
-                return false;
-            } else {
-                $content = $this->shop_cart->fileGetContents($file);
-                $content = $this->shop_cart->unserialize($content);
             }
+
+            if (!$this->shop_cart->fileExists($file_db)) {
+                return false;
+            }
+
+            $content = $this->shop_cart->fileGetContents($file);
+            $content = $this->shop_cart->unserialize($content);
         }
 
         return $content;
@@ -804,16 +808,22 @@ class BridgeCommon
             );
         }
 
+        $tablesAndViews     = array_merge($this->db_tables, $this->db_views);
+        $limitQuerySize     = ((int)$this->bridge_options['limit_query_size'] * 1024);
         foreach ($result as $item) {
-            if (in_array($item['Name'], $this->db_tables)) {
-                $item['Rows'] = empty($item['Rows']) ? 0 : $item['Rows'];
-                $tabinfo[0] += $item['Rows'];
-                $tabinfo[$item['Name']] = $item['Rows'];
-                $tabsize[$item['Name']] = 1
-                    + round($this->bridge_options['limit_query_size'] * 1024 / ($item['Avg_row_length'] + 1));
-                $this->table_sizes[$item['Name']]['size'] = $item['Data_length'] + $item['Index_length'];
-                $this->table_sizes[$item['Name']]['rows'] = $item['Rows'];
-                $this->db_size += $item['Data_length'] + $item['Index_length'];
+            if (in_array($item['Name'], $tablesAndViews)) {
+                $tableSize      = (int)$item['Data_length'] + (int)$item['Index_length'];
+                $tableRows      = (int)(empty($item['Rows']) ? 0 : $item['Rows']);
+                $tableAvgSize   = (int)($item['Avg_row_length'] <= 0 ? 1 : $item['Avg_row_length']);
+
+                $item['Rows']   = $tableRows;
+                $tabinfo[0]     += $tableRows;
+                $tabinfo[$item['Name']] = $tableRows;
+
+                $tabsize[$item['Name']] = ($tableRows == 0 ? 1 : 1 + round($limitQuerySize/$tableAvgSize));
+                $this->table_sizes[$item['Name']]['size'] = $tableSize;
+                $this->table_sizes[$item['Name']]['rows'] = $tableRows;
+                $this->db_size += $tableSize;
             }
         }
 
@@ -835,9 +845,10 @@ class BridgeCommon
         }
 
         $this->shop_cart->execSql('SET SQL_QUOTE_SHOW_CREATE = 1');
+        $this->shop_cart->execSql('SET @@session.time_zone = \'+00:00\'');
 
         // Form database dump file
-        foreach ($this->db_tables as $table) {
+        foreach ($tablesAndViews as $table) {
             $this->handled_tables[] = $table;
 
             if ($this->dump_data_prev) {
@@ -885,7 +896,14 @@ class BridgeCommon
             '/*!40101 \\1 */',
             $tab
         );
-        $this->dbFileWrite("DROP TABLE IF EXISTS `{$table}`;\n{$tab[1]};\n\n");
+
+        if (in_array($table, $this->db_views, true)) {
+            $this->dbFileWrite("DROP VIEW IF EXISTS `{$table}`;\n{$tab[1]};\n\n");
+        }
+
+        if (in_array($table, $this->db_tables, true) && !in_array($table, $this->db_views, true)) {
+            $this->dbFileWrite("DROP TABLE IF EXISTS `{$table}`;\n{$tab[1]};\n\n");
+        }
 
         $numeric_column = [];
         $result = $this->shop_cart->getSqlResults("SHOW COLUMNS FROM `{$table}`", self::NUMERIC);
@@ -898,7 +916,6 @@ class BridgeCommon
         }
 
         $field = 0;
-
         foreach ($result as $col) {
             $numeric_column[$field++] = preg_match('/^(\w*int|year)/', $col[1]) ? 1 : 0;
         }
@@ -912,7 +929,18 @@ class BridgeCommon
         $fields = $field;
         $limit  = $tabsize[$table];
         $i      = 0;
-        $query  = "SELECT * FROM `{$table}` LIMIT {$from}, {$limit}";
+
+        // Check if table got rows to do limitations
+        $limitQueryPart = '';
+        if ((int)$tabinfo[$table] > 0) {
+            if ($from == 0) {
+                $limitQueryPart = 'LIMIT ' . (int)$limit;
+            } else {
+                $limitQueryPart = 'LIMIT ' . (int)$from . ', ' . (int)$limit;
+            }
+        }
+
+        $query  = "SELECT * FROM `{$table}`" . $limitQueryPart;
         $result = $this->shop_cart->getSqlResults($query, self::NUMERIC);
 
         if ($result === false) {
@@ -923,8 +951,12 @@ class BridgeCommon
         }
 
         $count_result = count($result);
+        if (in_array($table, $this->db_views, true)) {
+            $handled_tables[] = $table;
+            return true;
+        }
 
-        if ($count_result > 0) {
+        if ($count_result > 0 && in_array($table, $this->db_tables, true)) {
             $this->dbFileWrite("INSERT INTO `{$table}` VALUES");
         }
 
@@ -969,7 +1001,7 @@ class BridgeCommon
             $query  = "SELECT * FROM {$table} LIMIT {$from}, {$limit}";
             $result = $this->shop_cart->getSqlResults($query, self::NUMERIC);
 
-            if (!$result) {
+            if ($result === false) {
                 return $this->generateError(
                     "Error selecting data from table `{$table}`. Error: ".$this->shop_cart->error_no.'; '
                     .$this->shop_cart->error_msg
@@ -1000,7 +1032,9 @@ class BridgeCommon
         $this->putLog(self::GET_SQL_CANCEL_PARAM);
         $path_sm_tmp_get_sql_txt     = $this->tmp_folder_path . '/' . self::FILE_TMP_GET_SQL;
         $path_dump_data_tmp_txt      = $this->tmp_folder_path . '/' . self::DB_DATA_TMP;
-        $path_em1_bridge_db_dump_sql = $this->tmp_folder_path . '/' . self::DB_FILE_COMPRESSION_NO;
+        $path_em1_bridge_db_dump_sql = $this->tmp_folder_path . '/' . self::DB_FILE_MAIN
+            . $this->getPartNumber($this->dump_file_part_number)
+            . self::DB_FILE_EXT_COMPRESSION_NO;
 
         if ($this->shop_cart->fileExists($path_sm_tmp_get_sql_txt)) {
             $this->shop_cart->unlink($path_sm_tmp_get_sql_txt);
@@ -1046,14 +1080,16 @@ class BridgeCommon
     private function generateArchive()
     {
         if ($this->bridge_options['allow_compression']) {
-            $file_gz = self::DB_FILE_MAIN.$this->getPartNumber($this->dump_file_part_number)
-                .self::DB_FILE_EXT_COMPRESSION_YES;
-            $fname_gz_path = $this->tmp_folder_path."/$file_gz";
-            $fp_gz = $this->shop_cart->gzFileOpen($fname_gz_path, "wb{$this->bridge_options['compress_level']}");
+            $file_gz = self::DB_FILE_MAIN . $this->getPartNumber($this->dump_file_part_number)
+                . self::DB_FILE_EXT_COMPRESSION_YES;
+            $fname_gz_path = $this->tmp_folder_path . "/$file_gz";
+            $fp_gz = $this->shop_cart->gzFileOpen(
+                $fname_gz_path,
+                "wb{$this->bridge_options['compress_level']}"
+            );
 
-            $fname_path = $this->tmp_folder_path."/$this->dump_file_current";
-            $fp = $this->shop_cart->fileOpen($fname_path, 'r');
-
+            $fname_path = $this->tmp_folder_path . "/$this->dump_file_current";
+            $fp         = $this->shop_cart->fileOpen($fname_path, 'r');
             if ($fp_gz && $fp) {
                 while (!feof($fp)) {
                     $content = $this->shop_cart->fileRead($fp, $this->bridge_options['package_size']);
@@ -1083,7 +1119,8 @@ class BridgeCommon
     {
         $this->putLog('Selecting tables');
         $result = $this->shop_cart->getSqlResults(
-            'SHOW FULL TABLES FROM `' . $this->shop_cart->getDbName() . "` WHERE Table_type = 'BASE TABLE'",
+            'SHOW FULL TABLES FROM `' . $this->shop_cart->getDbName() .
+            "` WHERE Table_type = 'BASE TABLE' OR Table_type = 'VIEW'",
             self::NUMERIC
         );
 
@@ -1106,17 +1143,21 @@ class BridgeCommon
                 $inc_tables++;
             }
 
-            $tables[] = $table[0];
+            $tables[] = $table;
         }
 
-        $count = count($tables);
-        for ($i = 0; $i < $count; $i++) {
-            if (preg_match("/$tables_exclude_pattern/", $tables[$i])) {
+        foreach ($tables as $table) {
+            if (preg_match('/' . $tables_exclude_pattern . '/', $table[0])) {
                 continue;
             }
 
-            if (preg_match("/$tables_include_pattern/", $tables[$i]) || $inc_tables == 0) {
-                $this->db_tables[] = $tables[$i];
+            if ($inc_tables == 0 || preg_match('/' . $tables_include_pattern . '/', $table[0])) {
+                if ($table[1] === 'VIEW') {
+                    $this->db_views[] = $table[0];
+                    continue;
+                }
+
+                $this->db_tables[] = $table[0];
             }
         }
 
@@ -1160,8 +1201,7 @@ class BridgeCommon
     private function generateTablePattern($table)
     {
         $table = preg_quote($table, '/');
-        $table = str_replace('\*', '.*', $table);
-        $table = str_replace('\?', '?', $table);
+        $table = str_replace(array('\*', '\?'), array('.*', '?'), $table);
 
         return '^' . $this->shop_cart->getDbPrefix() . "$table$";
     }
@@ -1768,11 +1808,9 @@ class BridgeCommon
 
     private function checkIssetParams(array $params)
     {
-        $count = count($params);
-
-        for ($i = 0; $i < $count; $i++) {
-            if (!$this->shop_cart->issetRequestParam($params[$i])) {
-                return $this->generateError($this->br_errors[str_replace('_', '', $params[$i]) . '_param_missing']);
+        foreach ($params as $i => $paramValue) {
+            if (!$this->shop_cart->issetRequestParam($paramValue)) {
+                return $this->generateError($this->br_errors[str_replace('_', '', $paramValue) . '_param_missing']);
             }
         }
 
@@ -1786,24 +1824,27 @@ class BridgeCommon
     {
         $items_list      = [];
         $filters_matched = [];
-        $xml             = simplexml_load_file($path_xml_file);
+        // Bug here -> https://bugs.php.net/bug.php?id=62577 using similar call
+        // $xml          = simplexml_load_file($path_xml_file);
+        $xml             = simplexml_load_string(file_get_contents($path_xml_file));
 
         foreach ($filters as $filter) {
             preg_match('/^(.*)\:(.*)$/', $filter, $matches);
             $filters_matched[$matches[1]] = $matches[2];
         }
 
-        $count_filters_matched = count($filters_matched);
-        $fields                = explode(',', $fields);
-        $items                 = $xml->xpath("{$items_node}");
-        $items_keys            = array_keys($items[0]);
+        $count_filters_matched  = count($filters_matched);
+        $fields                 = explode(',', $fields);
+        $items                  = $xml->xpath((string)($items_node));
+        $items_keys             = reset($items);
 
-        foreach ($items_keys as $item_name) {
+        /** @var \SimpleXMLElement $item */
+        foreach ($items_keys as $item) {
             if ($items_node != $items_info_node) {
-                $items_info = $xml->xpath("{$items_info_node}/{$item_name}");
-                $items_info = $items_info[0];
+                $items_info = $xml->xpath("{$items_info_node}/{$item->getName()}");
+                $items_info = reset($items_info);
             } else {
-                $items_info = $item_name;
+                $items_info = $item;
             }
 
             if ($count_filters_matched > 0) {
@@ -1815,11 +1856,11 @@ class BridgeCommon
             }
 
             foreach ($fields as $field) {
-                $items_list[$item_name][$field] = (string)$items_info->$field;
+                $items_list[$item->getName()][$field] = (string)$items_info->$field;
             }
         }
 
-        return [$this->responseKeyOutput => '1|' . $this->shop_cart->jsonEncode($items_list)."\r\n"];
+        return [$this->responseKeyOutput => '1|' . $this->shop_cart->jsonEncode($items_list) . "\r\n"];
     }
 
     /**
@@ -2078,14 +2119,14 @@ class BridgeCommon
 
             if ($uploaded_file['error']) {
                 return $this->generateError($this->br_errors['upload_file_error']);
-            } else {
-                $output = $this->shop_cart->setImage(
-                    $entity_type,
-                    $image_id,
-                    self::UPLOAD_FILE_NAME,
-                    self::UPLOAD_FILE_NAME
-                );
             }
+
+            $output = $this->shop_cart->setImage(
+                $entity_type,
+                $image_id,
+                self::UPLOAD_FILE_NAME,
+                self::UPLOAD_FILE_NAME
+            );
         }
 
         return [$this->responseKeyOutput => $output];
@@ -2259,6 +2300,7 @@ class BridgeCommon
             $this->shop_cart->unlink($file);
         }
 
+        /** @var \ZipArchive $zipObj */
         $zipObj = $this->shop_cart->getZipArchiveInstance();
 
         if ($zipObj->open($file, $this->shop_cart->getZipArchiveCreateValue()) === true) {
@@ -2284,6 +2326,7 @@ class BridgeCommon
             while (false !== ($value = readdir($fp))) {
                 $item = "$path/$value";
 
+                /** @var \ZipArchive $zipObj*/
                 if ($this->shop_cart->isFile($item)) {
                     $zipObj->addFile($item, $this->shop_cart->subStr($item, $storeRootDirLength + 1));
                 } elseif ($this->shop_cart->isDirectory($item)
@@ -2300,13 +2343,13 @@ class BridgeCommon
 
     private function generateFileData($file, $allowCompression)
     {
-        $file_size = $this->shop_cart->fileSize($file);
+        $file_size = $this->shop_cart->fileSize("$this->tmp_folder_path/" . $file);
         $output = "0\r\n" . ($allowCompression ? '1' : '0') . '|';
         $div_last = $file_size % $this->bridge_options['package_size'];
         $output .= $div_last == 0
             ? ($file_size / $this->bridge_options['package_size'])
             : (($file_size - $div_last) / $this->bridge_options['package_size'] + 1);
-        $output .= "|$file_size|\r\n" . basename($file) . "\r\n" . md5_file($file);
+        $output .= "|$file_size|\r\n" . basename($file) . "\r\n" . md5_file("$this->tmp_folder_path/" . $file);
 
         $headers = false;
         if (!headers_sent()) {
@@ -2346,7 +2389,7 @@ class BridgeCommon
             $log_file_handler = $this->shop_cart->fileOpen($this->tmp_folder_path.'/'.self::LOG_FILENAME, 'a');
         }
 
-        fputs($log_file_handler, '[' . date('r') . "]$data\r\n");
+        fwrite($log_file_handler, '[' . date('r') . "]$data\r\n");
         $this->shop_cart->fileClose($log_file_handler);
     }
 

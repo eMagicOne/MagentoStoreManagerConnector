@@ -14,29 +14,17 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with Magento Store Manager Connector.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *  @author    eMagicOne <contact@emagicone.com>
+ *  @copyright 2018 eMagicOne
+ *  @license   http://www.gnu.org/licenses   GNU General Public License
  */
 
-namespace Emagicone\Bridgeconnector\Helper;
+header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+header('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT');
 
-/**
- * Class GzFile
- * @package Emagicone\Bridgeconnector\Helper
- */
-class GzFile extends \Magento\Framework\Archive\Helper\File\Gz
-{
-    public function gzOpen($mode)
-    {
-        $this->_open($mode);
-    }
+header('Cache-Control: no-store, no-cache, must-revalidate');
+header('Cache-Control: post-check=0, pre-check=0', false);
+header('Pragma: no-cache');
 
-    public function gzWrite($data)
-    {
-        $this->_write($data);
-    }
-
-    public function gzClose()
-    {
-        $this->_close();
-        $this->_fileHandler = null;
-    }
-}
+header('Location: /');
